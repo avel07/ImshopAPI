@@ -155,7 +155,7 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
             "areaFias": null,
             "areaKladr": null,
             "building": null,
-            "city": "Омск",
+            "city": "Пятигорск",
             "cityFias": "140e31da-27bf-4519-9ea0-6185d681d44e",
             "cityKladr": "5500000100000",
             "city_kladr": "5500000100000",
@@ -208,7 +208,7 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
             },
             body: JSON.stringify(deliveriesData)
           });
-          let result = await response;
+          let result = await response.json();
           console.log(result);
     });
 

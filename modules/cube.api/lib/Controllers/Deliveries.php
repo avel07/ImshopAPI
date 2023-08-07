@@ -17,7 +17,7 @@ class Deliveries extends BaseController
     {
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
 
-        \Bitrix\Main\Diag\Debug::dumpToFile($fields, $varName = 'ПОЛУЧИЛИ' , $fileName = 'zxc.log');
+        \Bitrix\Main\Diag\Debug::dumpToFile($fields, $varName = 'ПОЛУЧИЛИ', $fileName = 'zxc.log');
 
         if (!empty($fields['externalUserId'])) {
             $userId = User::getAnonimusUserId($fields['externalUserId']);
@@ -37,6 +37,9 @@ class Deliveries extends BaseController
         // Создаем объект корзины, чтобы пропустить через неё список всех товаров.
         $basketObject = Basket::createBasket(\Cube\Api\Application::APP_PARAMS['SITE_ID']);
 
+        // Город, который пришел с запроса. Нам по сути нужен только его поле - CODE.
+        $city = Location::getCitiesAction(Location::COUNTRY_CODE_RU, $fields['addressData']['city']);
+        
         // Оптимизируем запрос. Выносим за цикл.
         foreach ($fields['items'] as $arItem) {
             $arItemsIds[] = $arItem['privateId'];
@@ -86,20 +89,27 @@ class Deliveries extends BaseController
         $allShipmentsCollection = $this->getAllDeliveries(['NAME', 'CLASS_NAME', 'CODE', 'DESCRIPTION']);
         // Привязываем каждую доставку, кроме системной пустой.
         foreach ($allShipmentsCollection as $shipmentObject) {
+            // Убираем пустую системную доставку.
             if ($shipmentObject->getClassName() === '\Bitrix\Sale\Delivery\Services\EmptyDeliveryService') {
                 continue;
             }
+
+            // Получаем extraServices, ID пунктов самовывоза.
+            if($this->hasExtraServices($shipmentObject)){
+                $stores = $this->getStoresByDelivery($shipmentObject, $city['CODE']);
+                $stores = $stores['WIDTH_CODE'] ?? $stores['WITHOUT_CODE'];
+            }
+
             // Устанавливаем доставку.
             $this->setDeliveryById($orderObject, $basketObject, $shipmentObject->getId());
 
             // Запишем массив объектов доставок.
             $shipmentsArray[] = $shipmentObject;
         }
-
         // Формируем ответ.
-        $arResult = $this->deliveriesResponse($orderObject, $shipmentsArray);
-        
-        \Bitrix\Main\Diag\Debug::dumpToFile($arResult, $varName = 'data' , $fileName = 'zxc.log');
+        $arResult = $this->deliveriesResponse($orderObject, $shipmentsArray, $stores);
+
+        \Bitrix\Main\Diag\Debug::dumpToFile($arResult, $varName = 'data', $fileName = 'zxc.log');
         return $arResult;
     }
 
@@ -108,20 +118,37 @@ class Deliveries extends BaseController
      * 
      * @param \Bitrix\Sale\Order $orderObject       Объект заказа
      * @param array $shipmentsArray                 Массив доставок
+     * @param array $stores                         Массив пунктов выдачи заказов.
      */
-    private function deliveriesResponse(\Bitrix\Sale\Order $orderObject, array $shipmentsArray): ?array
-    {   
-        foreach($shipmentsArray as $shipmentObject){
-            $arResult[] = [
-                'id'                    => $shipmentObject->getId(),
+    private function deliveriesResponse(\Bitrix\Sale\Order $orderObject, array $shipmentsArray, array $stores): ?array
+    {
+        foreach ($shipmentsArray as $key => $shipmentObject) {
+            $arResult['deliveries'][$key] = [
+                'id'                    => strval($shipmentObject->getId()),
                 'title'                 => $shipmentObject->getName(),
-                'hasPickupLocations'    => false,
                 'description'           => $shipmentObject->getDescription(),
                 'type'                  => 'delivery',
                 'price'                 => $orderObject->getDeliveryPrice(),
                 'min'                   => 3,
-                'timelabel'             => 'Скоро с вами свяжется менеджер.'
+                'timelabel'             => 'Скоро с вами свяжется менеджер.',
+                'hasPickupLocations'    => $this->hasExtraServices($shipmentObject) ? true : false,
             ];
+            // Добавляем 
+            if($this->hasExtraServices($shipmentObject)){
+                $stores = $stores[$shipmentObject->getId()];
+                foreach ($stores as $arStores){
+                    $arResult['deliveries'][$key]['locations'][] = [
+                        'id'        =>  $arStores['ID'],
+                        'title'     =>  $arStores['TITLE'],
+                        'address'   =>  $arStores['ADDRESS'],
+                        'city'      =>  $arStores['UF_CITY'],
+                        'price'     =>  $orderObject->getDeliveryPrice(),
+                        'min'       =>  3,
+                        'lat'       =>  $arStores['GPS_N'],
+                        'lon'       =>  $arStores['GPS_S'],
+                    ];
+                }
+            }
         }
         return $arResult;
     }
@@ -199,5 +226,55 @@ class Deliveries extends BaseController
             'ID'   => $delivery[1]
         ];
         return $delivery;
+    }
+
+    /**
+     * Получить склады по строке города и без.
+     * 
+     * @param object    $deliveryObject        Объект доставки
+     * @param string    $city                  Cтрока город
+     * 
+     * @return array
+     */
+
+    public static function getStoresByDelivery(object $shipmentObject, string $city): ?array
+    {
+        // Получем поля extraServices. Нас интересуют выбранные пункты самовывоза.
+        $arStores[$shipmentObject->getId()] = \Bitrix\Sale\Delivery\ExtraServices\Manager::getStoresFields($shipmentObject->getId(), true)['PARAMS']['STORES'];
+        // Получаем коллекцию пунктов самовывоза.
+        $storesCollection[$shipmentObject->getId()] = Store::getActiveStoresCollection($arStores[$shipmentObject->getId()]);
+        // Проходимся по каждому пункту самовывоза.
+        foreach ($storesCollection[$shipmentObject->getId()] as $shipmentId => $storesObject) {
+            // Нам нужен конкретно пункт самовывоза связанные с кодом города. А код города у нас записан в description.
+            if ($city === $storesObject->getDescription()) {
+                // Записываем если есть совпадения.
+                $storesWithCode[$shipmentObject->getId()][$shipmentId] = $storesObject->collectValues();
+            } else {
+                // Записываем, если нет совпадений.
+                $storesWithoutCode[$shipmentObject->getId()][$shipmentId] = $storesObject->collectValues();
+            }
+        }
+        $stores = [
+            'WIDTH_CODE'    => $storesWithCode,
+            'WITHOUT_CODE'  => $storesWithoutCode
+        ];
+        return $stores;
+    }
+
+    /**
+     * Имеет ли доставка экстрасервисы
+     * 
+     * @param $shipmentObject
+     * @return bool
+     */
+
+    public static function hasExtraServices(object $shipmentObject): ?bool
+    {
+        if(\Bitrix\Sale\Delivery\ExtraServices\Manager::getStoresFields($shipmentObject->getId(), true)){
+            return true;
+        }
+        else{
+            return false;
+        }
     }
 }
