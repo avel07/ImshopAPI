@@ -18,14 +18,14 @@ class Order extends BaseController
         \Bitrix\Main\Loader::includeModule('sale');
         \Bitrix\Main\Loader::includeModule('catalog');
         parent::__construct($request);
-        
         $this->fields = \Bitrix\Main\Application::getInstance()->getContext()->getRequest()->getInput();
     }
 
-    public function createAction(): ?array
+    public function createAction(): ?object
     {
+
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
-        
+
         // Проходимся по всем заказам массива.
         foreach ($fields['orders'] as $arOrder) {
 
@@ -136,7 +136,7 @@ class Order extends BaseController
             }
             $arResult = $this->orderResponse($orderObject, $arOrder['uuid']);
         }
-        return $arResult;
+        return $this->setResponse($arResult);
     }
 
     /**

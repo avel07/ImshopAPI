@@ -14,9 +14,10 @@ class Payments extends BaseController
         $this->fields = \Bitrix\Main\Application::getInstance()->getContext()->getRequest()->getInput();
     }
 
-    public function listAction(): ?array
+    public function listAction(): ?object
     {
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
+
         // Если пользователь получен, то проверяем.
         if (!empty($fields['externalUserId'])) {
             $userId = User::getAnonimusUserId($fields['externalUserId']);
@@ -91,7 +92,7 @@ class Payments extends BaseController
 
         // Формируем ответ.
         $arResult = $this->paymentsResponse($basketObject, $paymentSystems);
-        return $arResult;
+        return $this->setResponse($arResult);
     }
 
     /**

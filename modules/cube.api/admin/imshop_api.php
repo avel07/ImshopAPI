@@ -134,7 +134,7 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
             headers: {
                 'Content-Type':'application/json'
             },
-            body: {orderData}
+            body: JSON.stringify(orderData)
           });
           
           let result = await response.json();
@@ -245,7 +245,7 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
             headers: {
                 'Content-Type':'application/json'
             },
-            body: {paymentsData}
+            body: JSON.stringify(paymentsData)
           });
           let result = await response.json();
           console.log(result);

@@ -2,6 +2,8 @@
 
 namespace Cube\Api\Controllers;
 
+use Bitrix\Main\HttpResponse;
+
 class Deliveries extends BaseController
 {
     private $fields = [];
@@ -13,11 +15,15 @@ class Deliveries extends BaseController
         $this->fields = \Bitrix\Main\Application::getInstance()->getContext()->getRequest()->getInput();
     }
 
-    public function listAction(): ?array
+    /**
+     * Главный метод класса. Возвращает валидный для ImShop response через переопределенный ответ.
+     * 
+     * @return object
+     */
+    public function listAction(): ?object
     {
+        // Полученные поля.
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
-
-        \Bitrix\Main\Diag\Debug::dumpToFile($fields, $varName = 'ПОЛУЧИЛИ', $fileName = 'zxc.log');
 
         if (!empty($fields['externalUserId'])) {
             $userId = User::getAnonimusUserId($fields['externalUserId']);
@@ -109,8 +115,8 @@ class Deliveries extends BaseController
         // Формируем ответ.
         $arResult = $this->deliveriesResponse($orderObject, $shipmentsArray, $stores);
 
-        \Bitrix\Main\Diag\Debug::dumpToFile($arResult, $varName = 'data', $fileName = 'zxc.log');
-        return $arResult;
+        // Важно передавать нестандартный контроллер, а кастомный ответ.
+        return $this->setResponse($arResult);
     }
 
     /**
