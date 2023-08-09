@@ -18,9 +18,9 @@ class Deliveries extends BaseController
     /**
      * Главный метод класса. Возвращает валидный для ImShop response через переопределенный ответ.
      * 
-     * @return object
+     * @return array
      */
-    public function listAction(): ?object
+    public function listAction(): ?array
     {
         // Полученные поля.
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
@@ -116,7 +116,7 @@ class Deliveries extends BaseController
         $arResult = $this->deliveriesResponse($orderObject, $shipmentsArray, $stores);
 
         // Важно передавать нестандартный контроллер, а кастомный ответ.
-        return $this->setResponse($arResult);
+        return $arResult;
     }
 
     /**

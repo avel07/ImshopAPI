@@ -14,7 +14,7 @@ class Payments extends BaseController
         $this->fields = \Bitrix\Main\Application::getInstance()->getContext()->getRequest()->getInput();
     }
 
-    public function listAction(): ?object
+    public function listAction(): ?array
     {
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
 
@@ -92,7 +92,7 @@ class Payments extends BaseController
 
         // Формируем ответ.
         $arResult = $this->paymentsResponse($basketObject, $paymentSystems);
-        return $this->setResponse($arResult);
+        return $arResult;
     }
 
     /**
@@ -107,8 +107,9 @@ class Payments extends BaseController
             $arResult['payments'][] = [
                 'id'            => $paymentSystem->getId(),
                 'title'         => $paymentSystem->getName(),
-                'discription'   => $paymentSystem->getDescription(),
-                'price'         => $basketObject->getPrice()
+                'description'   => $paymentSystem->getDescription(),
+                'price'         => $basketObject->getPrice(),
+                'type'          => $paymentSystem->get('IS_CASH') ? 'cash' : 'card'
             ];
         }
         return $arResult;

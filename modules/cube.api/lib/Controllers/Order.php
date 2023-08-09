@@ -21,7 +21,7 @@ class Order extends BaseController
         $this->fields = \Bitrix\Main\Application::getInstance()->getContext()->getRequest()->getInput();
     }
 
-    public function createAction(): ?object
+    public function createAction(): ?array
     {
 
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
@@ -136,7 +136,7 @@ class Order extends BaseController
             }
             $arResult = $this->orderResponse($orderObject, $arOrder['uuid']);
         }
-        return $this->setResponse($arResult);
+        return $arResult;
     }
 
     /**

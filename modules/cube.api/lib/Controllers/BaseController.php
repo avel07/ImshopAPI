@@ -3,6 +3,8 @@
 namespace Cube\Api\Controllers;
 
 use Bitrix\Main\Engine\ActionFilter;
+use Bitrix\Main\Response;
+use rest;
 
 /**
  * Наследник класса контроллеров битрикса
@@ -37,18 +39,17 @@ class BaseController extends \Bitrix\Main\Engine\Controller
     /**
      * 
      * Переопределяем стандартный ответ от контроллера через HttpResponse
-     * Исключаем ключи data, errors и status в ответе.
+     * Исключаем ключи data, errors и status в ответе. Отправляем только data.
      * 
-     *  @param array $data    данные для response
+     *  @param Response $response       Данные ответа.
      * 
-     *  @return Response      ответ в чистом json
+     *  @return Response                Сам переопределенный ответ в json.
      * */
-    final protected function setResponse(array $data): ?\Bitrix\Main\Response
+    final function finalizeResponse(Response $response): ?\Bitrix\Main\Response
     {
-        $response = new \Bitrix\Main\HttpResponse();
-        $response->addHeader('Content-Type', 'application/json');
-        $response->flush(\Bitrix\Main\Web\Json::encode($data));
-        return $response;
+        $data = \Bitrix\Main\Web\Json::decode($response->getContent());
+        $data = \Bitrix\Main\Web\Json::encode($data['data']);
+        return $response->setContent($data);
     }
 
     /**
