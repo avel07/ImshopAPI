@@ -105,7 +105,7 @@ class Payments extends BaseController
     {   
         foreach($paymentSystems as $paymentSystem){
             $arResult['payments'][] = [
-                'id'            => $paymentSystem->getId(),
+                'id'            => strval($paymentSystem->getId()),
                 'title'         => $paymentSystem->getName(),
                 'description'   => $paymentSystem->getDescription(),
                 'price'         => $basketObject->getPrice(),
