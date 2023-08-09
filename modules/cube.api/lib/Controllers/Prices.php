@@ -10,6 +10,9 @@ class Prices extends BaseController
     /**
      * Получение цен для товаров
      *
+     * @param array $ids            ID товаров
+     * @param array $groups         Группы пользователя
+     * @param int   $priceGroupId   ID типа цены
      * @return array|null
      */
     public static function listAction(array $ids, array $groups = self::DEFAULT_USER_GROUP, $priceGroupId = self::DEFAULT_PRICE_GROUP_ID): ?array

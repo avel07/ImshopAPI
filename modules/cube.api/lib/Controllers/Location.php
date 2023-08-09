@@ -86,7 +86,7 @@ class Location extends BaseController
     }
 
     /**
-     * Получить страны
+     * Получить все страны на русском
      *
      * @return array|null
      */

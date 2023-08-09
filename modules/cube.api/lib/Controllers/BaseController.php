@@ -20,7 +20,6 @@ class BaseController extends \Bitrix\Main\Engine\Controller
      * Переопределяем префильтры
      *
      * Удаляем csrf и обязательную авторизацию
-     *
      * @return void
      */
     protected function getDefaultPreFilters()
@@ -42,9 +41,8 @@ class BaseController extends \Bitrix\Main\Engine\Controller
      * Исключаем ключи data, errors и status в ответе. Отправляем только data.
      * 
      *  @param Response $response       Данные ответа.
-     * 
      *  @return Response                Сам переопределенный ответ в json.
-     * */
+     */
     final function finalizeResponse(Response $response): ?\Bitrix\Main\Response
     {
         $data = \Bitrix\Main\Web\Json::decode($response->getContent());
@@ -53,13 +51,11 @@ class BaseController extends \Bitrix\Main\Engine\Controller
     }
 
     /**
-     * Добавляем стандартную ошибку по PSR-4 формату. Логируем все ошибки..
+     * Добавляем стандартную ошибку по PSR формату. Логируем все ошибки..
      * 
      * @param \Bitrix\Main\Error $error         Объект ошибки.
-     * 
      * @return \Bitrix\Main\Diag\FileLogger     Файл лога.
      */
-
     protected function addError(\Bitrix\Main\Error $error)
     {
         $now = new \Bitrix\Main\Type\DateTime();

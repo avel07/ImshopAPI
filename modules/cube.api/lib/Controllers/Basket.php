@@ -20,7 +20,6 @@ class Basket extends BaseController
      *
      * @param string|int $productId
      * @param string $quantity
-     * 
      * @return void|object
      */
     public static function addItem(\Bitrix\Sale\Basket $basketObject, array $arBasketFields = [], array $context = ['SITE_ID' => \Cube\Api\Application::APP_PARAMS['SITE_ID']])
@@ -55,7 +54,6 @@ class Basket extends BaseController
      * @param string $name
      * @param string $code
      * @param string $value
-     * 
      * @return object
      */
     public static function createCustomProperty(string $name = '', string $code = '', string $value = ''): ?object
@@ -67,14 +65,13 @@ class Basket extends BaseController
         ]);
         return $basketProperty;
     }
-    
+
     /**
      * Генерирует массив привязки свойств к корзине.
      * 
      * @param string $itemId
      * @param string $quantity
      * @param string $imShopItemId
-     * 
      * @return array
      */
     public static function basketSetFields(string $itemId, string $quantity, string $imShopItemId): ?array

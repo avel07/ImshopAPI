@@ -6,7 +6,7 @@ class DiscountCard extends BaseController
 {
 
     /**
-     * Cписок групп пользователей по дисконтным картам.
+     * Константа списка групп пользователей по дисконтным картам.
      */
     public const GROUP_LIST = [
         10 => "5",
@@ -21,9 +21,4 @@ class DiscountCard extends BaseController
         19 => "14",
         20 => "15"
     ];
-
-    public function __construct(\Bitrix\Main\Request $request = null)
-    {
-        parent::__construct($request);
-    }
 }

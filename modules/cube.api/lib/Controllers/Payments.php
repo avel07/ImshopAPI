@@ -6,7 +6,7 @@ class Payments extends BaseController
 {
 
     private $fields = [];
-    
+
     public function __construct(\Bitrix\Main\Request $request = null)
     {
         \Bitrix\Main\Loader::includeModule('sale');
@@ -14,6 +14,10 @@ class Payments extends BaseController
         $this->fields = \Bitrix\Main\Application::getInstance()->getContext()->getRequest()->getInput();
     }
 
+    /**
+     * Получить список оплат.
+     * @return array
+     */
     public function listAction(): ?array
     {
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
@@ -100,15 +104,15 @@ class Payments extends BaseController
      * 
      * @param \Bitrix\Sale\Order $orderObject       Объект заказа
      * @param array $shipmentsArray                 Массив доставок
+     * @return array
      */
     private function paymentsResponse(\Bitrix\Sale\Basket $basketObject, object $paymentSystems): ?array
-    {   
-        foreach($paymentSystems as $paymentSystem){
+    {
+        foreach ($paymentSystems as $paymentSystem) {
             $arResult['payments'][] = [
                 'id'            => strval($paymentSystem->getId()),
                 'title'         => $paymentSystem->getName(),
                 'description'   => $paymentSystem->getDescription(),
-                'price'         => $basketObject->getPrice(),
                 'type'          => $paymentSystem->get('IS_CASH') ? 'cash' : 'card'
             ];
         }
@@ -147,7 +151,7 @@ class Payments extends BaseController
             'PAY_SYSTEM_NAME' => $paySystemService->getField("NAME"),
         ]);
     }
-        /**
+    /**
      * Получить коллекцию всех активных Оплат.
      * 
      * @param array @arSelect

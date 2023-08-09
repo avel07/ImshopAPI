@@ -17,7 +17,6 @@ class Deliveries extends BaseController
 
     /**
      * Главный метод класса. Возвращает валидный для ImShop response через переопределенный ответ.
-     * 
      * @return array
      */
     public function listAction(): ?array
@@ -45,7 +44,7 @@ class Deliveries extends BaseController
 
         // Город, который пришел с запроса. Нам по сути нужен только его поле - CODE.
         $city = Location::getCitiesAction(Location::COUNTRY_CODE_RU, $fields['addressData']['city']);
-        
+
         // Оптимизируем запрос. Выносим за цикл.
         foreach ($fields['items'] as $arItem) {
             $arItemsIds[] = $arItem['privateId'];
@@ -101,7 +100,7 @@ class Deliveries extends BaseController
             }
 
             // Получаем extraServices, ID пунктов самовывоза.
-            if($this->hasExtraServices($shipmentObject)){
+            if ($this->hasExtraServices($shipmentObject)) {
                 $stores = $this->getStoresByDelivery($shipmentObject, $city['CODE']);
                 $stores = $stores['WIDTH_CODE'] ?? $stores['WITHOUT_CODE'];
             }
@@ -140,9 +139,9 @@ class Deliveries extends BaseController
                 'hasPickupLocations'    => $this->hasExtraServices($shipmentObject) ? true : false,
             ];
             // Добавляем 
-            if($this->hasExtraServices($shipmentObject)){
+            if ($this->hasExtraServices($shipmentObject)) {
                 $stores = $stores[$shipmentObject->getId()];
-                foreach ($stores as $arStores){
+                foreach ($stores as $arStores) {
                     $arResult['deliveries'][$key]['locations'][] = [
                         'id'        =>  $arStores['ID'],
                         'title'     =>  $arStores['TITLE'],
@@ -206,7 +205,6 @@ class Deliveries extends BaseController
      * 
      * @param array @arSelect
      * @param array @arFilter
-     * 
      * @return object
      */
     private function getAllDeliveries(array $arSelect = ['*'], array $arFilter = ['ACTIVE' => 'Y']): ?object
@@ -239,7 +237,6 @@ class Deliveries extends BaseController
      * 
      * @param object    $deliveryObject        Объект доставки
      * @param string    $city                  Cтрока город
-     * 
      * @return array
      */
 
@@ -276,10 +273,9 @@ class Deliveries extends BaseController
 
     public static function hasExtraServices(object $shipmentObject): ?bool
     {
-        if(\Bitrix\Sale\Delivery\ExtraServices\Manager::getStoresFields($shipmentObject->getId(), true)){
+        if (\Bitrix\Sale\Delivery\ExtraServices\Manager::getStoresFields($shipmentObject->getId(), true)) {
             return true;
-        }
-        else{
+        } else {
             return false;
         }
     }

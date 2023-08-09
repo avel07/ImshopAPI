@@ -77,7 +77,7 @@ class Order extends BaseController
             // Добавляем товары в корзину.
             foreach ($arOrder['items'] as $key => $arItem) {
                 $productObject = $productsCollection->getAll()[$key];
-                
+
                 // Проверка на количественный учет.
                 if (!$productObject && $productObject->getQuantity() <= 0) {
                     $this->addError(new \Bitrix\Main\Error('Ошибка добавления товара в корзину при оформлении заказа. Недоступное количество.', 400));
@@ -86,7 +86,7 @@ class Order extends BaseController
 
                 // Проверка на активность элемента.
                 if (!$productObject->getIblockElement()->getActive()) {
-                    $this->addError(new \Bitrix\Main\Error('Ошибка добавления товара в корзину при оформлении заказа. Товар с ID - '.$productObject->getId().' неактивен.', 400));
+                    $this->addError(new \Bitrix\Main\Error('Ошибка добавления товара в корзину при оформлении заказа. Товар с ID - ' . $productObject->getId() . ' неактивен.', 400));
                     return null;
                 }
 

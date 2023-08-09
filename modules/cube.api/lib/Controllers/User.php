@@ -6,8 +6,7 @@ use CUser;
 
 class User extends BaseController
 {
-
-
+    
     public function __construct(\Bitrix\Main\Request $request = null)
     {
         parent::__construct($request);
