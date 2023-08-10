@@ -35,12 +35,6 @@ class Payments extends BaseController
             $userId = User::getAnonimusUserId();
         }
 
-        // Создаем объект заказа, чтобы через него пропустить список всех доставок со скидками.
-        $orderObject = Order::createOrder(\Cube\Api\Application::APP_PARAMS['SITE_ID'], $userId);
-
-        // Создаем объект корзины, чтобы пропустить через неё список всех товаров.
-        $basketObject = Basket::createBasket(\Cube\Api\Application::APP_PARAMS['SITE_ID']);
-
         // Оптимизируем запрос. Выносим за цикл.
         foreach ($fields['items'] as $arItem) {
             $arItemsIds[] = $arItem['privateId'];
@@ -53,6 +47,12 @@ class Payments extends BaseController
             $this->addError(new \Bitrix\Main\Error('Количество пришедших товаров не совпадает с существующими на сайте. Вероятно несовпадение ID пришедшего с существующим.', 400));
             return null;
         }
+
+        // Создаем объект заказа, чтобы через него пропустить список всех доставок со скидками.
+        $orderObject = Order::createOrder(\Cube\Api\Application::APP_PARAMS['SITE_ID'], $userId);
+
+        // Создаем объект корзины, чтобы пропустить через неё список всех товаров.
+        $basketObject = Basket::createBasket(\Cube\Api\Application::APP_PARAMS['SITE_ID']);
 
         // Добавляем товары в корзину.
         foreach ($fields['items'] as $key => $arItem) {
@@ -87,7 +87,7 @@ class Payments extends BaseController
         $orderObject->setBasket($basketObject);
 
         // Привязываем доставки.
-        Deliveries::setDeliveryById($orderObject, $basketObject, $fields['deliveryId']);
+        Deliveries::setDeliveryById($orderObject, $basketObject, Deliveries::getDeliveryIdbyImshop($fields['deliveryId'])['ID']);
         // Привязываем скидки к корзине.
         Basket::setDiscountByBasket($basketObject);
 
@@ -96,6 +96,7 @@ class Payments extends BaseController
 
         // Формируем ответ.
         $arResult = $this->paymentsResponse($basketObject, $paymentSystems);
+
         return $arResult;
     }
 

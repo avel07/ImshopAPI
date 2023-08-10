@@ -36,15 +36,6 @@ class Deliveries extends BaseController
             $userId = User::getAnonimusUserId();
         }
 
-        // Создаем объект заказа, чтобы через него пропустить список всех доставок со скидками.
-        $orderObject = Order::createOrder(\Cube\Api\Application::APP_PARAMS['SITE_ID'], $userId);
-
-        // Создаем объект корзины, чтобы пропустить через неё список всех товаров.
-        $basketObject = Basket::createBasket(\Cube\Api\Application::APP_PARAMS['SITE_ID']);
-
-        // Город, который пришел с запроса. Нам по сути нужен только его поле - CODE.
-        $city = Location::getCitiesAction(Location::COUNTRY_CODE_RU, $fields['addressData']['city']);
-
         // Оптимизируем запрос. Выносим за цикл.
         foreach ($fields['items'] as $arItem) {
             $arItemsIds[] = $arItem['privateId'];
@@ -53,11 +44,19 @@ class Deliveries extends BaseController
         // Получаем коллекцию товаров.
         $productsCollection = Product::getProduct(['ID' => $arItemsIds], ['QUANTITY', 'IBLOCK_ELEMENT.ACTIVE']);
 
-
         if (count($productsCollection->getAll()) !== count($fields['items'])) {
             $this->addError(new \Bitrix\Main\Error('Количество пришедших товаров не совпадает с существующими на сайте. Вероятно несовпадение ID пришедшего с существующим.', 400));
             return null;
         }
+        
+        // Создаем объект заказа, чтобы через него пропустить список всех доставок со скидками.
+        $orderObject = Order::createOrder(\Cube\Api\Application::APP_PARAMS['SITE_ID'], $userId);
+
+        // Создаем объект корзины, чтобы пропустить через неё список всех товаров.
+        $basketObject = Basket::createBasket(\Cube\Api\Application::APP_PARAMS['SITE_ID']);
+
+        // Город, который пришел с запроса. Нам по сути нужен только его поле - CODE.
+        $city = Location::getCitiesAction(Location::COUNTRY_CODE_RU, $fields['addressData']['city']);
 
         // Добавляем товары в корзину.
         foreach ($fields['items'] as $key => $arItem) {

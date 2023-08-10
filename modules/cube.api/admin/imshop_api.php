@@ -184,17 +184,10 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
         },
         "items": [
             {
-                "name": "Тестовый товар 1",
-                "id": "00a03026-412a-54fe-a9df-dcf9325f8618",
-                "privateId": "8189",
-                "configurationId": "8189",
-                "quantity": 1
-            },
-            {
                 "name": "Тестовый товар 2",
                 "id": "605e0108-dc95-5dab-95a2-7f459da6aade",
-                "privateId": "8201",
-                "configurationId": "8201",
+                "privateId": "30856",
+                "configurationId": "30856",
                 "quantity": 2
             }
         ]
@@ -213,30 +206,34 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
     });
 
     const paymentsData = {
-        "externalUserId": "XXXXXX",
-        "country": "RU",
-        "hasPreorderItems": true,
-        "city": "Москва",
-        "promocode": null,
-        "deliveryId": "5",
-        "pickupLocationId": "100",
-        "bonusesSpent": 250,
-        "items": [
+        "installId": "69f294cd-3502-471a-9b12-598c117fd46d",
+          "city": "Москва",
+          "addressFiasId": "0c5b2444-70a0-4932-980c-b4dc0d3f02b5",
+          "selectedDateIntervalId": null,
+          "userData": {},
+          "addressFull": "г Москва",
+          "items": [
             {
-                "name": "Тестовый товар 1",
-                "id": "00a03026-412a-54fe-a9df-dcf9325f8618",
-                "privateId": "8201",
-                "configurationId": "8201",
-                "quantity": 1
-            },
-            {
-                "name": "Тестовый товар 2",
-                "id": "605e0108-dc95-5dab-95a2-7f459da6aade",
-                "privateId": "8189",
-                "configurationId": "8189",
-                "quantity": 1
+              "subtotal": 5999,
+              "price": 5999,
+              "configurationId": "217360",
+              "quantity": 1,
+              "id": "217353",
+              "name": "Кеды Reebok Royal Complete Sport (10,5)",
+              "discount": 0,
+              "privateId": "217360"
             }
-        ]
+          ],
+          "pickupLocationId": "MSK65",
+          "bonusesSpent": 0,
+          "country": "RU",
+          "regionFiasId": "0c5b2444-70a0-4932-980c-b4dc0d3f02b5",
+          "loyaltyCard": null,
+          "deliveryId": "49",
+          "cityFiasId": "0c5b2444-70a0-4932-980c-b4dc0d3f02b5",
+          "clientVersion": "6.20.0",
+          "promocode": null,
+          "externalUserId": "17420"
     };
     let paymentsButton = document.querySelector('[data-action="payments"]');
     paymentsButton.addEventListener('click', async (e) => {

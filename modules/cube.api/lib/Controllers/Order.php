@@ -26,6 +26,8 @@ class Order extends BaseController
 
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
 
+        \Bitrix\Main\Diag\Debug::dumpToFile($fields, $varName = 'Получили в оформление', $fileName = '/local/modules/cube.api/log/take.log');
+
         // Проходимся по всем заказам массива.
         foreach ($fields['orders'] as $arOrder) {
 
