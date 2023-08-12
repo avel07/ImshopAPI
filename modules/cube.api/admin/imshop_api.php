@@ -12,6 +12,8 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
         <button class="ui-btn ui-btn-lg" data-action="order">Оформить заказ</button>
         <button class="ui-btn ui-btn-lg" data-action="deliveries">Получить список доставок</button>
         <button class="ui-btn ui-btn-lg" data-action="payments">Получить список оплат</button>
+        <button class="ui-btn ui-btn-lg" data-action="createPayment">Получить список созданных оплат</button>
+        <button class="ui-btn ui-btn-lg" data-action="capturePayment">Проверить созданную оплату</button>
     </div>
     <div class="ui-alert" style="display: none;"></div>
     <script>
@@ -214,22 +216,32 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
           "addressFull": "г Москва",
           "items": [
             {
-              "subtotal": 5999,
-              "price": 5999,
-              "configurationId": "217360",
-              "quantity": 1,
-              "id": "217353",
-              "name": "Кеды Reebok Royal Complete Sport (10,5)",
-              "discount": 0,
-              "privateId": "217360"
-            }
+                "name": "915 DD COCOA Сумка жен.экокожа бежевый",
+                "id": "605e0108-dc95-5dab-95a2-7f459da6aade",
+                "privateId": "8189",
+                "configurationId": "8189",
+                "price": 2390,
+                "quantity": 1,
+                "discount": 0,
+                "subtotal": 2390
+            },
+            {
+                "name": "873 DD BLACK Сумка жен.экокожа черный",
+                "id": "3ccd380e-1f40-5056-8a7a-ef6e8a9582b5",
+                "privateId": "8201",
+                "configurationId": "8201",
+                "price": 4050,
+                "quantity": 2,
+                "discount": 0,
+                "subtotal": 9100
+            },
           ],
           "pickupLocationId": "MSK65",
           "bonusesSpent": 0,
           "country": "RU",
           "regionFiasId": "0c5b2444-70a0-4932-980c-b4dc0d3f02b5",
           "loyaltyCard": null,
-          "deliveryId": "49",
+          "deliveryId": "zxc/2",
           "cityFiasId": "0c5b2444-70a0-4932-980c-b4dc0d3f02b5",
           "clientVersion": "6.20.0",
           "promocode": null,
@@ -247,6 +259,44 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
           let result = await response.json();
           console.log(result);
     });
+    const createPayment = {
+        "command": "create",
+        "paymentMethodId": "sberbank/card",
+        "orderUuid": "cbc85e53-8067-4f13-a708-11d9aea71bf3",
+        "orderId": "6941",
+        "returnUrl": "imshop://payment/failed"
+    }
+    let createPaymentButton = document.querySelector('[data-action="createPayment"]');
+    createPaymentButton.addEventListener('click', async (e) => {
+        let response = await fetch('/api/payments/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type':'application/json'
+            },
+            body: JSON.stringify(createPayment)
+          });
+          let result = await response.json();
+          console.log(result);
+    });
+
+    const capturePayment = {
+        "command": "capture",
+        "paymentMethodId": "sberbank/card",
+        "paymentId": "6956"
+    }
+    let capturePaymentButton = document.querySelector('[data-action="capturePayment"]');
+    capturePaymentButton.addEventListener('click', async (e) => {
+        let response = await fetch('/api/payments/capture', {
+            method: 'POST',
+            headers: {
+                'Content-Type':'application/json'
+            },
+            body: JSON.stringify(capturePayment)
+          });
+          let result = await response.json();
+          console.log(result);
+    });
+
 })
     </script>
 <?php

@@ -15,6 +15,7 @@ class Payments extends BaseController
     }
 
     /**
+     * Action
      * Получить список оплат.
      * @return array
      */
@@ -95,19 +96,19 @@ class Payments extends BaseController
         $paymentSystems = self::getAllPayments(['ID', 'NAME', 'DESCRIPTION']);
 
         // Формируем ответ.
-        $arResult = $this->paymentsResponse($basketObject, $paymentSystems);
+        $arResult = $this->listActionResponse($paymentSystems);
 
         return $arResult;
     }
 
     /**
-     * Формирование ответа для ImShop.
+     * Формирование ответа списка оплат.
      * 
      * @param \Bitrix\Sale\Order $orderObject       Объект заказа
      * @param array $shipmentsArray                 Массив доставок
      * @return array
      */
-    private function paymentsResponse(\Bitrix\Sale\Basket $basketObject, object $paymentSystems): ?array
+    private function listActionResponse(object $paymentSystems): ?array
     {
         foreach ($paymentSystems as $paymentSystem) {
             $arResult['payments'][] = [
@@ -117,6 +118,101 @@ class Payments extends BaseController
                 'type'          => $paymentSystem->get('IS_CASH') ? 'cash' : 'card'
             ];
         }
+        return $arResult;
+    }
+
+
+    /**
+     * Action
+     * Интернет эквайринг. Отдаем ссылку на оплату.
+     * 
+     * @return array
+     */
+    public function createAction(): ?array
+    {
+        $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
+        // Инициализируем объект заказа
+        $order = \Bitrix\Sale\Order::load($fields['orderId']);
+        // Коллекция оплат.
+        $paymentCollection = $order->getPaymentCollection();
+        // Получаем текущуюу оплату заказа.
+        $paymentObject = $paymentCollection->current();
+        // Проверим сразу, чтобы не было второго запроса, оплачен ли заказ.
+        if($paymentObject->getField('PAID') === 'Y'){
+            $this->addError(new \Bitrix\Main\Error('Ошибка формирования ссылки на оплату. Оплата имеет статус оплачено.', 400));
+            return null;
+        }
+        // Получаем сервис оплаты.
+        $payService = \Bitrix\Sale\PaySystem\Manager::getObjectById($paymentObject->getField('PAY_SYSTEM_ID'));
+        // Инициализируем оплату для объекта оплаты.
+        $initPayment = $payService->initiatePay($paymentObject, null, \Bitrix\Sale\PaySystem\BaseServiceHandler::STRING);
+        // Проверяем ошибку оплаты. Если найдена, возвращаем сообщения ошибки.
+        if(!$initPayment->isSuccess()){
+            $this->addError(new \Bitrix\Main\Error('При инициализации оплаты произошли ошибки: '.$initPayment->getBuyerErrorMessages(), 400));
+            return null;
+        }
+        $arResult = $this->createActionResponse($paymentCollection, $initPayment);
+        return $arResult;
+    }
+
+    /**
+     * Формирование ответа для создания оплаты в Интернет-Эквайринг.
+     * 
+     * @param \Bitrix\Sale\PaymentCollection $paymentCollection
+     * @param \Bitrix\Sale\PaySystem\ServiceResult $initPayment
+     * @return array
+     */
+    private function createActionResponse(\Bitrix\Sale\PaymentCollection $paymentCollection,\Bitrix\Sale\PaySystem\ServiceResult $initPayment): ?array
+    {
+        $paymentObject = $paymentCollection->current();
+        $arResult = [
+            'success'       => true,
+            'paymentId'     => $paymentObject->getId(),
+            'paymentUrl'    => $initPayment->getPaymentUrl(),
+        ];
+        return $arResult;
+    }
+
+    /**
+     * Action
+     * Интернет эквайринг. Проверяем оплату.
+     * @return array
+     */
+    public function captureAction(): ?array
+    {
+        $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
+        // Получим данные об оплате. К сожалению работает только getList.
+        $paymentArray = \Bitrix\Sale\PaymentCollection::getList([
+            'select' => ['*'],
+            'filter' => ['=ID' => $fields['paymentId']]
+        ])->fetchRaw();
+        // Если заказ не оплачен, отдаем ошибку.
+        if($paymentArray['PAID'] !== 'Y'){
+            if($paymentArray['PS_STATUS_MESSAGE']){
+                $this->addError(new \Bitrix\Main\Error('Проверка оплаты не пройдена. Заказ не оплачен. Сообщение с платежной системы: '.$paymentArray['PS_STATUS_MESSAGE'], 400));
+                return null;
+            } else {
+                $this->addError(new \Bitrix\Main\Error('Проверка оплаты не пройдена. Заказ не оплачен. Сообщения с платежной системы нет.', 400));
+                return null;
+            }
+        }
+        $arResult = $this->captureActionResponse($paymentArray);
+        return $arResult;
+    }
+
+    /**
+     * Формирование ответа для проверки оплаты в Интернет-Эквайринге.
+     * 
+     * @param array $paymentArray   Массив данных об оплате.
+     * @return array
+     */
+    private function captureActionResponse(array $paymentArray): ?array
+    {
+        $arResult = [
+            'success'           => true,
+            'paymentId'         => $paymentArray['ID'],
+            'paymentCaptured'   => true
+        ];
         return $arResult;
     }
 

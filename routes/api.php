@@ -12,6 +12,12 @@ return function(\Bitrix\Main\Routing\RoutingConfigurator $routes)
     // Список всех оплат
     $routes->post('/api/payments', [Cube\Api\Controllers\Payments::class, 'list']);
 
+    // Создание платежной системы.
+    $routes->post('/api/payments/create', [\Cube\Api\Controllers\Payments::class, 'create']);
+
+    // Проверка платежа.
+    $routes->post('/api/payments/capture', [\Cube\Api\Controllers\Payments::class, 'capture']);
+
     // Наличие товаров
     // $routes->post('/api/products/availability', [Cube\Api\Controllers\Deliveries::class, 'create']);
 
@@ -20,4 +26,6 @@ return function(\Bitrix\Main\Routing\RoutingConfigurator $routes)
 
     // Список заказов пользователя
     // $routes->post('/api/user/orders', [Cube\Api\Controllers\Deliveries::class, 'create']);
+
+
 };
