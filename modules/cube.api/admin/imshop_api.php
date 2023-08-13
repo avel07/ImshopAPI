@@ -8,12 +8,20 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
 \Bitrix\Main\UI\Extension::load("ui.buttons");
 \Bitrix\Main\UI\Extension::load("ui.alerts");
 ?>
+    <style>
+        .buttons__block{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+    </style>
     <div class="buttons__block">
         <button class="ui-btn ui-btn-lg" data-action="order">Оформить заказ</button>
         <button class="ui-btn ui-btn-lg" data-action="deliveries">Получить список доставок</button>
         <button class="ui-btn ui-btn-lg" data-action="payments">Получить список оплат</button>
         <button class="ui-btn ui-btn-lg" data-action="createPayment">Получить список созданных оплат</button>
         <button class="ui-btn ui-btn-lg" data-action="capturePayment">Проверить созданную оплату</button>
+        <button class="ui-btn ui-btn-lg" data-action="productCheck">Проверить товары на складах</button>
     </div>
     <div class="ui-alert" style="display: none;"></div>
     <script>
@@ -297,6 +305,22 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
           console.log(result);
     });
 
+    const productCheck = {
+        "city": "Пятигорск",
+        "configurationIds": ["39753", "39754", "39755"]
+    }
+    let productCheckButton = document.querySelector('[data-action="productCheck"]');
+    productCheckButton.addEventListener('click', async (e) => {
+        let response = await fetch('/api/products/availability', {
+            method: 'POST',
+            headers: {
+                'Content-Type':'application/json'
+            },
+            body: JSON.stringify(productCheck)
+          });
+          let result = await response.json();
+          console.log(result);
+    });
 })
     </script>
 <?php

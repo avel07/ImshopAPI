@@ -136,7 +136,7 @@ class Order extends BaseController
                 $this->addError(new \Bitrix\Main\Error('Ошибка обновления данных пользователя - ' . $updateUser, 400));
                 return null;
             }
-            $arResult = $this->orderResponse($orderObject, $arOrder['uuid']);
+            $arResult = $this->createActionResponse($orderObject, $arOrder['uuid']);
         }
         return $arResult;
     }
@@ -158,7 +158,7 @@ class Order extends BaseController
      * @param \Bitrix\Sale\Order $orderObject       Объект заказа
      * @param string $uuId                          Id заказа в ImShop
      */
-    private function orderResponse(\Bitrix\Sale\Order $orderObject, string $uuId): ?array
+    private function createActionResponse(\Bitrix\Sale\Order $orderObject, string $uuId): ?array
     {
         foreach ($orderObject->getBasket()->getBasketItems() as $basketItem) {
             // Получение коллекции свойств товара в корзине

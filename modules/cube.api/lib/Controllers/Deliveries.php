@@ -16,7 +16,8 @@ class Deliveries extends BaseController
     }
 
     /**
-     * Главный метод класса. Возвращает валидный для ImShop response через переопределенный ответ.
+     * Action
+     * Возвращает список активных доставок в виде валидном для ImShop.
      * @return array
      */
     public function listAction(): ?array
@@ -48,7 +49,7 @@ class Deliveries extends BaseController
             $this->addError(new \Bitrix\Main\Error('Количество пришедших товаров не совпадает с существующими на сайте. Вероятно несовпадение ID пришедшего с существующим.', 400));
             return null;
         }
-        
+
         // Создаем объект заказа, чтобы через него пропустить список всех доставок со скидками.
         $orderObject = Order::createOrder(\Cube\Api\Application::APP_PARAMS['SITE_ID'], $userId);
 
@@ -100,7 +101,7 @@ class Deliveries extends BaseController
 
             // Получаем extraServices, ID пунктов самовывоза.
             if ($this->hasExtraServices($shipmentObject)) {
-                $stores = $this->getStoresByDelivery($shipmentObject, $city['CODE']);
+                $stores = $this->getStoresByDelivery($shipmentObject->getId(), $city['CODE']);
                 $stores = $stores['WIDTH_CODE'] ?? $stores['WITHOUT_CODE'];
             }
 
@@ -234,26 +235,25 @@ class Deliveries extends BaseController
     /**
      * Получить склады по строке города и без.
      * 
-     * @param object    $deliveryObject        Объект доставки
-     * @param string    $city                  Cтрока город
+     * @param string|int    $deliveryId     ID доставки
+     * @param string        $city           Cтрока город
      * @return array
      */
-
-    public static function getStoresByDelivery(object $shipmentObject, string $city): ?array
+    public static function getStoresByDelivery($shipmentId = null, string $city): ?array
     {
         // Получем поля extraServices. Нас интересуют выбранные пункты самовывоза.
-        $arStores[$shipmentObject->getId()] = \Bitrix\Sale\Delivery\ExtraServices\Manager::getStoresFields($shipmentObject->getId(), true)['PARAMS']['STORES'];
+        $arStores[$shipmentId] = \Bitrix\Sale\Delivery\ExtraServices\Manager::getStoresFields($shipmentId, true)['PARAMS']['STORES'];
         // Получаем коллекцию пунктов самовывоза.
-        $storesCollection[$shipmentObject->getId()] = Store::getActiveStoresCollection($arStores[$shipmentObject->getId()]);
+        $storesCollection[$shipmentId] = Store::getActiveStoresCollection($arStores[$shipmentId]);
         // Проходимся по каждому пункту самовывоза.
-        foreach ($storesCollection[$shipmentObject->getId()] as $shipmentId => $storesObject) {
+        foreach ($storesCollection[$shipmentId] as $shipmentId => $storesObject) {
             // Нам нужен конкретно пункт самовывоза связанные с кодом города. А код города у нас записан в description.
             if ($city === $storesObject->getDescription()) {
                 // Записываем если есть совпадения.
-                $storesWithCode[$shipmentObject->getId()][$shipmentId] = $storesObject->collectValues();
+                $storesWithCode[$shipmentId][$shipmentId] = $storesObject->collectValues();
             } else {
                 // Записываем, если нет совпадений.
-                $storesWithoutCode[$shipmentObject->getId()][$shipmentId] = $storesObject->collectValues();
+                $storesWithoutCode[$shipmentId][$shipmentId] = $storesObject->collectValues();
             }
         }
         $stores = [
@@ -269,13 +269,9 @@ class Deliveries extends BaseController
      * @param $shipmentObject
      * @return bool
      */
-
     public static function hasExtraServices(object $shipmentObject): ?bool
     {
-        if (\Bitrix\Sale\Delivery\ExtraServices\Manager::getStoresFields($shipmentObject->getId(), true)) {
-            return true;
-        } else {
-            return false;
-        }
+        $arResult = \Bitrix\Sale\Delivery\ExtraServices\Manager::getStoresFields($shipmentObject->getId(), true) ? $arResult = true : $arResult = false;
+        return $arResult;
     }
 }
