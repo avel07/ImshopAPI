@@ -19,7 +19,7 @@ class User extends BaseController
      * @param string $email
      * @return void|string
      */
-    public static function generateUserId($id, string $phone, string $email): ?int
+    public static function generateUserId($id, string $phone = '', string $email = ''): ?int
     {
         $phone = self::normalizePhone($phone);
         if (!empty($id)) {

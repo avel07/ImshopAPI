@@ -2,6 +2,8 @@
 
 namespace Cube\Api\Controllers;
 
+use Bitrix\Seo\Engine\Bitrix;
+
 class Order extends BaseController
 {
 
@@ -21,12 +23,16 @@ class Order extends BaseController
         $this->fields = \Bitrix\Main\Application::getInstance()->getContext()->getRequest()->getInput();
     }
 
+    /**
+     * Action
+     * Создаем заказ.
+     * 
+     * 
+     */
     public function createAction(): ?array
     {
 
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
-
-        \Bitrix\Main\Diag\Debug::dumpToFile($fields, $varName = 'Получили в оформление', $fileName = '/local/modules/cube.api/log/take.log');
 
         // Проходимся по всем заказам массива.
         foreach ($fields['orders'] as $arOrder) {
@@ -105,14 +111,31 @@ class Order extends BaseController
             }
             // Привязываем order к типу плательщика.
             $orderObject->setPersonTypeId(self::PARAMS['PERSON_TYPE']);
+
             // Привязываем order к корзине. Скидки применятся автоматически.
             $orderObject->setBasket($basketObject);
 
+        
             // Привязываем конкретную доставку к заказу.
             Deliveries::setDeliveryById($orderObject, $basketObject, Deliveries::getDeliveryIdbyImshop($arOrder['delivery'])['ID']);
             // Привязываем конкретную оплату к заказу.
             Payments::setPayment($orderObject, Payments::getPaymentIdbyImshop($arOrder['payment']));
 
+            // Очищаем сразу все ранее привязанные купоны. Могут привязываться к user, fuser, sessid.
+            \Bitrix\Sale\DiscountCouponsManager::clear(true);
+
+            // Если есть промокод. Применяем его.
+            if($arOrder['promocode']){
+                // Если промокода не существует.
+                if(!\Bitrix\Sale\DiscountCouponsManager::isExist($arOrder['promocode'])){
+                    $this->addError(new \Bitrix\Main\Error('Ошибка применения промокода. Промокода - '.$arOrder['promocode'].' не существует', 400));
+                } else {
+                    // Применяем купон к заказу.
+                    Basket::setCouponToOrder($orderObject, $basketObject, $arOrder['promocode']);
+                }
+            }
+            // Пересчитаем корзину и заказ.
+            Basket::recalculateOrder($orderObject, $basketObject);
             // Привязываем свойства заказа.
             $propertyCollection = $orderObject->getPropertyCollection();
             $propertyCollection->getPhone()->setValue($arOrder['phone']);
@@ -124,7 +147,6 @@ class Order extends BaseController
 
             $orderObject->setField('USER_DESCRIPTION', $arOrder['deliveryComment']);
             $orderObject->doFinalAction(true);
-
             $resultOrder = $orderObject->save();
             if (!$resultOrder->isSuccess()) {
                 $this->addError(new \Bitrix\Main\Error('Ошибка создания нового заказа - ' . $resultOrder->getErrors(), 400));
@@ -163,7 +185,6 @@ class Order extends BaseController
         foreach ($orderObject->getBasket()->getBasketItems() as $basketItem) {
             // Получение коллекции свойств товара в корзине
             $propertyCollection = $basketItem->getPropertyCollection();
-
             // Поиск свойства по его имени
             foreach ($propertyCollection as $property) {
                 if ($property->getField('CODE') === Basket::PARAMS['IMSHOP_BASKET_ITEM_CODE']) {
@@ -172,14 +193,13 @@ class Order extends BaseController
             }
             $basketItems[] = [
                 'name'              => $basketItem->getField('NAME'),
-                'id'                => $basketItem->getField('PRODUCT_ID'), // Тут надо ввести ID товара, который придет!
+                'id'                => $imShopId,
                 'privateId'         => $basketItem->getField('PRODUCT_ID'),
                 'configurationId'   => $basketItem->getField('PRODUCT_ID'),
                 'price'             => $basketItem->getPrice(),
                 'quantity'          => $basketItem->getQuantity(),
-                'discount'          => $basketItem->getFinalPrice() - $basketItem->getPrice() * $basketItem->getQuantity(),
+                'discount'          => $basketItem->getDiscountPrice(),
                 'subtotal'          => $basketItem->getFinalPrice(),
-                'id'                => $imShopId
             ];
             $arResult = [
                 'message' => 'Ваш заказ успешно принят. Номер вашего заказа - ' . $orderObject->getId(),

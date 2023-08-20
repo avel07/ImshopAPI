@@ -131,6 +131,7 @@ class Payments extends BaseController
     public function createAction(): ?array
     {
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
+        \Bitrix\Main\Diag\Debug::dumpToFile($fields, $varName = 'Получили в создание оплаты', $fileName = '/local/modules/cube.api/log/take.log');
         // Инициализируем объект заказа
         $order = \Bitrix\Sale\Order::load($fields['orderId']);
         // Коллекция оплат.
@@ -152,6 +153,7 @@ class Payments extends BaseController
             return null;
         }
         $arResult = $this->createActionResponse($paymentCollection, $initPayment);
+        \Bitrix\Main\Diag\Debug::dumpToFile($arResult, $varName = 'Отдали в создании оплаты', $fileName = '/local/modules/cube.api/log/take.log');
         return $arResult;
     }
 
@@ -244,8 +246,10 @@ class Payments extends BaseController
         $payment = $paymentCollection->createItem();
         $paySystemService = \Bitrix\Sale\PaySystem\Manager::getObjectById($paymentId);
         $payment->setFields([
-            'PAY_SYSTEM_ID' => $paySystemService->getField("PAY_SYSTEM_ID"),
-            'PAY_SYSTEM_NAME' => $paySystemService->getField("NAME"),
+            'PAY_SYSTEM_ID'     => $paySystemService->getField("PAY_SYSTEM_ID"),
+            'PAY_SYSTEM_NAME'   => $paySystemService->getField("NAME"),
+            'SUM'               => $orderObject->getPrice(),
+            'CURRENCY'          => $orderObject->getCurrency()
         ]);
     }
     /**

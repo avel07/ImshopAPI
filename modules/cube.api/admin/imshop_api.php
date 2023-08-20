@@ -22,6 +22,7 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
         <button class="ui-btn ui-btn-lg" data-action="createPayment">Получить список созданных оплат</button>
         <button class="ui-btn ui-btn-lg" data-action="capturePayment">Проверить созданную оплату</button>
         <button class="ui-btn ui-btn-lg" data-action="productCheck">Проверить товары на складах</button>
+        <button class="ui-btn ui-btn-lg" data-action="basketCalculate">Расчет корзины</button>
     </div>
     <div class="ui-alert" style="display: none;"></div>
     <script>
@@ -83,14 +84,14 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
             "price": 28065.00,
             "deliveryPrice": 250.00,
             "authorizedBonuses": 300,
-            "promocode": null,
+            "promocode": '2023',
             "appliedDiscount": 0,
             "loyaltyCard": null,
             "delivery": "boxberry/2",
             "deliveryName": "Доставка в пункт самовывоза Боксберри",
             "pickupLocationId": "db30c598-2717-4adc-8e0c-9341786ba1f4",
             "pickupLoactionSnapshot": {},
-            "payment": "internal/3",
+            "payment": "internal/10",
             "paymentName": "При получении товара",
             "paymentProcessed": false,
             "paymentId": "87da77a2-de03-40a0-91b7-eadabce5db22",
@@ -271,7 +272,7 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
         "command": "create",
         "paymentMethodId": "sberbank/card",
         "orderUuid": "cbc85e53-8067-4f13-a708-11d9aea71bf3",
-        "orderId": "6941",
+        "orderId": "6949",
         "returnUrl": "imshop://payment/failed"
     }
     let createPaymentButton = document.querySelector('[data-action="createPayment"]');
@@ -290,7 +291,7 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
     const capturePayment = {
         "command": "capture",
         "paymentMethodId": "sberbank/card",
-        "paymentId": "6956"
+        "paymentId": "6958"
     }
     let capturePaymentButton = document.querySelector('[data-action="capturePayment"]');
     capturePaymentButton.addEventListener('click', async (e) => {
@@ -317,6 +318,71 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
                 'Content-Type':'application/json'
             },
             body: JSON.stringify(productCheck)
+          });
+          let result = await response.json();
+          console.log(result);
+    });
+    const basketCalculate = {
+        "city": "Пятигорск",
+        "cityKladr": "7700000000000",
+        "fiasCode": "77000000000000000000000",
+        "deliveryId": null,
+        "paymentId": null,
+        "deliveryPickupId": null,
+        "items": [
+            {
+                  "name": "915 DD COCOA Сумка жен.экокожа бежевый",
+                  "id": "605e0108-dc95-5dab-95a2-7f459da6aade",
+                  "privateId": "8189",
+                  "configurationId": "8189",
+                  "price": 2390,
+                  "quantity": 50,
+                  "discount": 0,
+                  "subtotal": 2390
+                },
+                {
+                  "name": "873 DD BLACK Сумка жен.экокожа черный",
+                  "id": "3ccd380e-1f40-5056-8a7a-ef6e8a9582b5",
+                  "privateId": "8201",
+                  "configurationId": "8201",
+                  "price": 4050,
+                  "quantity": 2,
+                  "discount": 0,
+                  "subtotal": 9100
+            },
+        ],
+        "externalUserId": "XXXXXXX",
+        "promocode": "2023",
+        "giftCards": [
+        {
+            "number": "123",
+            "pin": "123",
+        },
+        ],
+        "promoGroup": [
+            {
+            "id": "dd771099",
+            "gifts": [
+                {
+                "id": "56789",
+                "quantity": 1
+                }
+            ]
+            }
+        ],
+        "installId": "ed6b1eec-082f-4880-9100-bcd8e2016cd1",
+        "groupId": "1f3a5ced-2a79-4dda-b432-05b8188475fd",
+        "loyaltyCard": "12345",
+        "preferredPickupId": null
+    }
+    let basketCalculateButton = document.querySelector('[data-action="basketCalculate"]');
+    basketCalculateButton.addEventListener('click', async (e) => {
+        let response = await fetch('/api/basket/calculate', {
+            method: 'POST',
+            headers: {
+                'Content-Type':'application/json'
+            },
+            body: JSON.stringify(basketCalculate)
           });
           let result = await response.json();
           console.log(result);

@@ -22,7 +22,7 @@ return function(\Bitrix\Main\Routing\RoutingConfigurator $routes)
     $routes->post('/api/products/availability', [\Cube\Api\Controllers\Product::class, 'availability']);
 
     // Расчет корзины
-    $routes->post('/api/basket/calculate', [Cube\Api\Controllers\Deliveries::class, 'calculate']);
+    $routes->post('/api/basket/calculate', [Cube\Api\Controllers\Basket::class, 'calculate']);
 
     // Список заказов пользователя
     // $routes->post('/api/user/orders', [Cube\Api\Controllers\Deliveries::class, 'create']);
