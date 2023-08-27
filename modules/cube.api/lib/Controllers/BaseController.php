@@ -38,14 +38,13 @@ class BaseController extends \Bitrix\Main\Engine\Controller
      * Переопределяем стандартный ответ от контроллера через HttpResponse
      * Исключаем ключи data, errors и status в ответе. Отправляем только data.
      * 
-     *  @param Response $response       Данные ответа.
-     *  @return Response                Сам переопределенный ответ в json.
+     *  @param \Bitrix\Main\Response    $response       Данные ответа.
+     *  @return \Bitrix\Main\Response                   Сам переопределенный ответ в json.
      */
     final function finalizeResponse(\Bitrix\Main\Response $response): ?\Bitrix\Main\Response
     {
         $data = \Bitrix\Main\Web\Json::decode($response->getContent());
         $data['data'] ? $data = \Bitrix\Main\Web\Json::encode($data['data'], JSON_UNESCAPED_UNICODE) : $data = \Bitrix\Main\Web\Json::encode($data['errors'], JSON_UNESCAPED_UNICODE);
-
         return $response->setContent($data);
     }
 
@@ -70,4 +69,37 @@ class BaseController extends \Bitrix\Main\Engine\Controller
         ]);
         (new \Bitrix\Main\Diag\FileLogger(\Bitrix\Main\Application::getDocumentRoot() . "/local/modules/cube.api/log/errors.log"))->debug($message);
     }
+
+    /**
+     * Временное решение из за ошибок в ядре (current user может быть пусто)
+     * TODO: Удалить, как обновим проект до PHP 8+ и обновим Битрикс!
+     * 
+	 * @param Controller|string $controller
+	 * @param string     $actionName
+	 * @param array|null      $parameters
+	 *
+	 * @return HttpResponse|mixed
+	 * @throws SystemException
+	 */
+	public function forward($controller, string $actionName, array $parameters = null)
+	{
+		if (is_string($controller))
+		{
+			$controller = new $controller;
+		}
+
+		// override parameters
+		$controller->request = $this->getRequest();
+		$controller->setScope($this->getScope());;
+
+		// run action
+		$result = $controller->run(
+			$actionName,
+			$parameters === null ? $this->getSourceParametersList() : [$parameters]
+		);
+
+		$this->addErrors($controller->getErrors());
+
+		return $result;
+	}
 }

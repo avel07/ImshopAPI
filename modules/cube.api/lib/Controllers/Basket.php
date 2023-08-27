@@ -2,6 +2,8 @@
 
 namespace Cube\Api\Controllers;
 
+use Bitrix\Sale\Controller\Payment;
+
 class Basket extends BaseController
 {
 
@@ -28,7 +30,12 @@ class Basket extends BaseController
     {
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
 
-        User::getUserById($fields['externalUserId']) ? $userId = $fields['externalUserId'] : $userId = User::getAnonimusUserId();
+        if($fields['externalUserId']){
+            User::getUserById($fields['externalUserId']) ? $userId = $fields['externalUserId'] : $userId = User::getAnonimusUserId();
+        } else {
+            $userId = User::getAnonimusUserId();
+        }
+        
 
         // Если UserId не получено, то выводим ошибку, полученную из самой переменной.
         if (!is_int($userId)) {
@@ -85,11 +92,11 @@ class Basket extends BaseController
 
         // Привязываем конкретную доставку к заказу.
         if ($fields['deliveryId']) {
-            Deliveries::setDeliveryById($orderObject, $basketObject, $fields['deliveryId']);
+            Deliveries::setDeliveryById($orderObject, $basketObject, Deliveries::getDeliveryIdbyImshop($fields['deliveryId'])['ID']);
         }
         // Привязываем конкретную оплату к заказу.
         if ($fields['paymentId']) {
-            Payments::setPayment($orderObject, $fields['paymentId']);
+            Payments::setPayment($orderObject, Payments::getPaymentIdbyImshop($fields['paymentId'])['ID']);
         }
 
         // Очищаем сразу все ранее привязанные купоны. Могут привязываться к user, fuser, sessid.
@@ -105,15 +112,18 @@ class Basket extends BaseController
                 $this->setCouponToOrder($orderObject, $basketObject, $fields['promocode']);
             }
         }
+        $orderObject->doFinalAction(true);
         $arResult = $this->calculateActionResponse($orderObject, $productsCollection, $fields);
+        $this->addError(new \Bitrix\Main\Error($arResult));
         return $arResult;
     }
 
 
     /**
      * 
-     * @param \Bitrix\Sale\Order $orderObject   Объект заказа
-     * @param $productCollection
+     * @param \Bitrix\Sale\Order $orderObject   Объект заказа.
+     * @param $productCollection                Коллекция запроса из таблицы продуктов.
+     * @param $fields                           Поля, пришедшие из приложения.
      * @return array
      */
     private function calculateActionResponse(\Bitrix\Sale\Order $orderObject, object $productsCollection = null, array $fields = []): ?array
@@ -131,6 +141,7 @@ class Basket extends BaseController
             
             if($productObject->getQuantity() < $fieldItem['quantity']){
                 $error = 'Ошибка количества. '.$fieldItem['quantity'].' шт. - недоступное количество. Доступно - '.$productObject->getQuantity().' шт.';
+                $this->addError(new \Bitrix\Main\Error($error, 400));
             }
             $arItems[] = [
                 'name'                          => $basketItem->getField('NAME'),   // Имя товара.
@@ -261,10 +272,9 @@ class Basket extends BaseController
     public static function setCouponToOrder(\Bitrix\Sale\Order $orderObject, \Bitrix\Sale\Basket $basketObject, string $coupon = null): ?bool
     {
         \Bitrix\Sale\DiscountCouponsManager::init(
-            \Bitrix\Sale\DiscountCouponsManager::MODE_ORDER,
+            \Bitrix\Sale\DiscountCouponsManager::MODE_EXTERNAL,
             [
                 "userId" => $orderObject->getUserId(),
-                "orderId" => $orderObject->getId()
             ],
             true
         );
@@ -327,9 +337,33 @@ class Basket extends BaseController
         $discounts = $orderObject->getDiscount();
         $arDiscounts = $discounts->getApplyResult();
         foreach ($arDiscounts['ORDER'] as $arDiscount) {
+            \Bitrix\Main\Diag\Debug::dumpToFile($arDiscount, $varName = 'Дискоунты', $fileName = '/local/modules/cube.api/log/discounts.log');
             if ($arDiscount['COUPON_ID']) {
                 return $arDiscount['COUPON_ID'];
             }
         }
+    }
+
+    /**
+     * Получить коллекци корзин по ID заказов
+     * 
+     * @param array $orderIds   Массив ID заказов
+     * @return array
+     */
+    public static function getBasketsByOrderIds(array $orderIds = []): ?array
+    {
+        $basketArray = \Bitrix\Sale\Internals\BasketTable::query()
+            ->whereIn('ORDER_ID', $orderIds)
+            ->addSelect('ORDER_ID')
+            ->addSelect('PRODUCT_ID')
+            ->addSelect('PRODUCT.IBLOCK.IBLOCK_ID', 'IBLOCK_ID')
+            ->addSelect('PRICE')
+            ->addSelect('BASE_PRICE')
+            ->addSelect('QUANTITY')
+            ->addSelect('SUMMARY_PRICE')
+            ->addSelect('DISCOUNT_PRICE')
+            ->addSelect('DISCOUNT_NAME')
+            ->fetchAll();
+        return $basketArray;
     }
 }

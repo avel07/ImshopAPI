@@ -23,6 +23,7 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
         <button class="ui-btn ui-btn-lg" data-action="capturePayment">Проверить созданную оплату</button>
         <button class="ui-btn ui-btn-lg" data-action="productCheck">Проверить товары на складах</button>
         <button class="ui-btn ui-btn-lg" data-action="basketCalculate">Расчет корзины</button>
+        <button class="ui-btn ui-btn-lg" data-action="userOrders">Список заказов пользователя</button>
     </div>
     <div class="ui-alert" style="display: none;"></div>
     <script>
@@ -351,7 +352,7 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
                   "subtotal": 9100
             },
         ],
-        "externalUserId": "XXXXXXX",
+        "externalUserId": null,
         "promocode": "2023",
         "giftCards": [
         {
@@ -387,6 +388,21 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
           let result = await response.json();
           console.log(result);
     });
+    const userOrders = {
+        "userIdentifier": "12345"
+    }
+    let userOrdersButton = document.querySelector('[data-action="userOrders"]');
+    userOrdersButton.addEventListener('click', async (e) => {
+        let response = await fetch('/api/user/orders', {
+            method: 'POST',
+            headers: {
+                'Content-Type':'application/json'
+            },
+            body: JSON.stringify(userOrders)
+          });
+          let result = await response.json();
+          console.log(result);
+    })
 })
     </script>
 <?php

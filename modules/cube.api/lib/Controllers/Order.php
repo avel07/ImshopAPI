@@ -12,7 +12,8 @@ class Order extends BaseController
     public const PARAMS = [
         'CURRENCY'                      => 'RUB',   // Дефолтный тип валюты.
         'PERSON_TYPE'                   => 1,       // Тип плательщика.
-        'IMSHOP_BASKET_ITEM_CODE'       => 'appId'
+        'IMSHOP_BASKET_ITEM_CODE'       => 'appId',
+        'USER_ORDERS_LIMIT'             => 10
     ];
 
     public function __construct(\Bitrix\Main\Request $request = null)
@@ -87,7 +88,7 @@ class Order extends BaseController
                 $productObject = $productsCollection->getAll()[$key];
 
                 // Проверка на количественный учет.
-                if (!$productObject && $productObject->getQuantity() <= 0) {
+                if (!$productObject && $productObject->getQuantity() < $arItem['quantity']) {
                     $this->addError(new \Bitrix\Main\Error('Ошибка добавления товара в корзину при оформлении заказа. Недоступное количество.', 400));
                     return null;
                 }
@@ -119,7 +120,7 @@ class Order extends BaseController
             // Привязываем конкретную доставку к заказу.
             Deliveries::setDeliveryById($orderObject, $basketObject, Deliveries::getDeliveryIdbyImshop($arOrder['delivery'])['ID']);
             // Привязываем конкретную оплату к заказу.
-            Payments::setPayment($orderObject, Payments::getPaymentIdbyImshop($arOrder['payment']));
+            Payments::setPayment($orderObject, Payments::getPaymentIdbyImshop($arOrder['payment'])['ID']);
 
             // Очищаем сразу все ранее привязанные купоны. Могут привязываться к user, fuser, sessid.
             \Bitrix\Sale\DiscountCouponsManager::clear(true);
@@ -201,17 +202,54 @@ class Order extends BaseController
                 'discount'          => $basketItem->getDiscountPrice(),
                 'subtotal'          => $basketItem->getFinalPrice(),
             ];
-            $arResult = [
-                'message' => 'Ваш заказ успешно принят. Номер вашего заказа - ' . $orderObject->getId(),
-                'orders' => [
-                    'success'   => true,
-                    'id'        => $orderObject->getId(),
-                    'publicId'  => $orderObject->getId(),
-                    'uuid'      => $uuId,
-                    'items'     => $basketItems
-                ]
-            ];
         }
+        $arOrders[] = [
+            'success'   => true,
+            'id'        => $orderObject->getId(),
+            'publicId'  => $orderObject->getId(),
+            'uuid'      => $uuId,
+            'items'     => $basketItems
+        ];
+        $arResult = [
+            'message' => 'Ваш заказ успешно принят. Номер вашего заказа - ' . $orderObject->getId(),
+            'orders' => $arOrders
+        ];
         return $arResult;
+    }
+    
+    /**
+     * Получить список заказов пользователя.
+     * @param $userId   ID пользователя
+     * @return object
+     */
+    public static function getOrdersByUserId(string $userId = null): ?object
+    {
+       $ordersCollection = \Bitrix\Sale\Internals\OrderTable::query()
+           ->where('USER_ID', $userId)
+           ->addOrder('DATE_INSERT', 'DESC')
+           ->addSelect('*')
+           ->addSelect('STATUS.NAME')
+           ->addSelect('PAYMENT.PAY_SYSTEM_NAME')
+           ->addSelect('SHIPMENT.DELIVERY_NAME')
+           ->setLimit(self::PARAMS['USER_ORDERS_LIMIT'])
+           ->fetchCollection();
+        return $ordersCollection;
+    }
+
+    /**
+     * Cвойства заказов
+     * @param array $orderIds   ID заказов
+     * @return object
+     */
+    public static function getOrdersPropertiesByOrders(array $ordersIds = [])
+    {
+        $propertyCollection = \Bitrix\Sale\Internals\OrderPropsValueTable::query()
+            ->addFilter('ORDER_ID', $ordersIds)
+            ->addSelect('NAME')
+            ->addSelect('CODE')
+            ->addSelect('VALUE')
+            ->addSelect('ORDER_ID')
+            ->fetchCollection();
+        return $propertyCollection;
     }
 }
