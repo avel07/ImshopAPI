@@ -28,7 +28,6 @@ class Order extends BaseController
      * Action
      * Создаем заказ.
      * 
-     * 
      */
     public function createAction(): ?array
     {
@@ -36,7 +35,7 @@ class Order extends BaseController
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
 
         // Проходимся по всем заказам массива.
-        foreach ($fields['orders'] as $arOrder) {
+        foreach ($fields['orders'] as $key => $arOrder) {
 
             // Проверка на существование телефона или email. (должны быть обязательными).
             if (empty($arOrder['phone'] || empty($arOrder['email']))) {
@@ -160,8 +159,8 @@ class Order extends BaseController
                 return null;
             }
             $arResult = $this->createActionResponse($orderObject, $arOrder['uuid']);
+            return $arResult;
         }
-        return $arResult;
     }
 
     /**
@@ -187,16 +186,16 @@ class Order extends BaseController
             // Получение коллекции свойств товара в корзине
             $propertyCollection = $basketItem->getPropertyCollection();
             // Поиск свойства по его имени
-            foreach ($propertyCollection as $property) {
+            foreach ($propertyCollection as $key => $property) {
                 if ($property->getField('CODE') === Basket::PARAMS['IMSHOP_BASKET_ITEM_CODE']) {
                     $imShopId = $property->getField('VALUE');
                 }
             }
             $basketItems[] = [
                 'name'              => $basketItem->getField('NAME'),
-                'id'                => $imShopId,
-                'privateId'         => $basketItem->getField('PRODUCT_ID'),
-                'configurationId'   => $basketItem->getField('PRODUCT_ID'),
+                'id'                => (string) $imShopId,
+                'privateId'         => (string) $basketItem->getField('PRODUCT_ID'),
+                'configurationId'   => (string) $basketItem->getField('PRODUCT_ID'),
                 'price'             => $basketItem->getPrice(),
                 'quantity'          => $basketItem->getQuantity(),
                 'discount'          => $basketItem->getDiscountPrice(),
@@ -205,13 +204,14 @@ class Order extends BaseController
         }
         $arOrders[] = [
             'success'   => true,
-            'id'        => $orderObject->getId(),
-            'publicId'  => $orderObject->getId(),
+            'id'        => (string) $orderObject->getId(),
+            'publicId'  => (string) $orderObject->getId(),
             'uuid'      => $uuId,
             'items'     => $basketItems
         ];
         $arResult = [
-            'message' => 'Ваш заказ успешно принят. Номер вашего заказа - ' . $orderObject->getId(),
+            // Убрано из-за ошибок. Неправильно принимаются данные приложением. Попробуем пофиксить после обновления на PHP 8+.
+            // 'message' => 'Ваш заказ успешно принят. Номер вашего заказа - ' . $orderObject->getId(),
             'orders' => $arOrders
         ];
         return $arResult;

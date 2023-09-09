@@ -129,15 +129,16 @@ class Deliveries extends BaseController
     {
         foreach ($shipmentsArray as $key => $shipmentObject) {
             $arResult['deliveries'][$key] = [
-                'id'                    => strval($shipmentObject->getId()),
+                'id'                    => (string) $shipmentObject->getId(),
                 'title'                 => $shipmentObject->getName(),
-                'description'           => $shipmentObject->getDescription(),
                 'type'                  => 'delivery',
                 'price'                 => $orderObject->getDeliveryPrice(),
                 'min'                   => 3,
                 'timelabel'             => 'Скоро с вами свяжется менеджер.',
                 'hasPickupLocations'    => $this->hasExtraServices($shipmentObject) ? true : false,
             ];
+            // Описание т.к. не может быть пустым - выносим за основной массив.
+            !$shipmentObject->getDescription() ?: $arResult['deliveries'][$key]['description'] = $shipmentObject->getDescription();
             // Добавляем 
             if ($this->hasExtraServices($shipmentObject)) {
                 $stores = $stores[$shipmentObject->getId()];
@@ -155,6 +156,7 @@ class Deliveries extends BaseController
                 }
             }
         }
+        ddebug($arResult);
         return $arResult;
     }
 
@@ -246,14 +248,14 @@ class Deliveries extends BaseController
         // Получаем коллекцию пунктов самовывоза.
         $storesCollection[$shipmentId] = Store::getActiveStoresCollection($arStores[$shipmentId]);
         // Проходимся по каждому пункту самовывоза.
-        foreach ($storesCollection[$shipmentId] as $shipmentId => $storesObject) {
+        foreach ($storesCollection[$shipmentId] as $key => $storesObject) {
             // Нам нужен конкретно пункт самовывоза связанные с кодом города. А код города у нас записан в description.
             if ($city === $storesObject->getDescription()) {
                 // Записываем если есть совпадения.
-                $storesWithCode[$shipmentId][$shipmentId] = $storesObject->collectValues();
+                $storesWithCode[$shipmentId][] = $storesObject->collectValues();
             } else {
                 // Записываем, если нет совпадений.
-                $storesWithoutCode[$shipmentId][$shipmentId] = $storesObject->collectValues();
+                $storesWithoutCode[$shipmentId][] = $storesObject->collectValues();
             }
         }
         $stores = [

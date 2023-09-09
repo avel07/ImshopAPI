@@ -2,8 +2,6 @@
 
 namespace Cube\Api\Controllers;
 
-use Bitrix\Sale\Controller\Payment;
-
 class Basket extends BaseController
 {
 
@@ -137,28 +135,30 @@ class Basket extends BaseController
             // Массив товара, что пришел с хука.
             $fieldItem = $fields['items'][$key];
             // ID скидок, примененных к товару.
-            $discountIds = $discountList[$basketItem->getProductId()];
-            
+            $discountIds[] = (string) $discountList[$basketItem->getProductId()];
+            // Обработаем ошибку количества
             if($productObject->getQuantity() < $fieldItem['quantity']){
                 $error = 'Ошибка количества. '.$fieldItem['quantity'].' шт. - недоступное количество. Доступно - '.$productObject->getQuantity().' шт.';
                 $this->addError(new \Bitrix\Main\Error($error, 400));
             }
-            $arItems[] = [
-                'name'                          => $basketItem->getField('NAME'),   // Имя товара.
-                'id'                            => $basketItem->getProductId(),     // ID товара.
-                'price'                         => $basketItem->getPrice(),         // Цена товара с учетом скидки.
-                'discount'                      => $basketItem->getDiscountPrice(), // Скидка.
-                'quantity'                      => $basketItem->getQuantity(),      // Количество.
-                'subtotal'                      => $basketItem->getBasePrice(),     // Цена без скидки.
-                'bonuses'                       => null,                            // Бонусы.
-                'addons'                        => null,                            // Доп товары.
-                'itemKitId'                     => null,                            // ID товарного набора (пока такого нет).
-                'appliedDiscounts'              => $discountIds,                    // ID примененной скидки.
-                'error'                         => $error,                          // Ошибка, если есть.
-                'notice'                        => null,                            // Произвольный текст рядом с товаром.
-                'unavailableDeliveryMessage'    => null,                            // Если есть проблема с доставкой.
-                'warehouseId'                   => null,                            // ID склада .
+            $arItems[$key] = [
+                'name'                          => $basketItem->getField('NAME'),           // Имя товара.
+                'id'                            => (string) $basketItem->getProductId(),    // ID товара.
+                'price'                         => $basketItem->getPrice(),                 // Цена товара с учетом скидки.
+                'discount'                      => $basketItem->getDiscountPrice(),         // Скидка.
+                'quantity'                      => $basketItem->getQuantity(),              // Количество.
+                'subtotal'                      => $basketItem->getBasePrice(),             // Цена без скидки.
+                // 'bonuses'                       => null,                                 // Бонусы.
+                // 'addons'                        => null,                                 // Доп товары.
+                // 'itemKitId'                     => null,                                 // ID товарного набора (пока такого нет).
+                // 'notice'                        => null,                                 // Произвольный текст рядом с товаром.
+                // 'unavailableDeliveryMessage'    => null,                                 // Если есть проблема с доставкой.
+                // 'warehouseId'                   => null,                                 // ID склада.
             ];
+            // Так как примененная скидка не может быть ни null, ни пустой строкой, то вынесем за основной массив
+            !empty($discountIds) ?: $arItems[$key]['appliedDiscounts'] = $discountIds;
+            // Так как ошибка не может быть ни null, ни пустой строкой, то вынесем за основной массив
+            !$error ?: $arItems[$key]['error'] = $error;
             unset($error, $fieldItem, $discountIds, $productObject);
         }
         $arResult = [
@@ -167,12 +167,13 @@ class Basket extends BaseController
             "skipPayment"           => false,       // Пропустить оплату в заказе (false полагаю).
             'discount'              => $basketObject->getBasePrice() - $basketObject->getPrice(), // Скидка. Высчитываем вручную.
             'items'                 => $arItems,    // Массив элементов корзины.
-            'bonuses'               => null,        // Массив бонусов для списания.
-            'deliveryGroupsBonuses' => null,        // Бонусы разделенной корзины.
-            'giftCards'             => null,        // Подарочные карты.
-            'availablePromocodes'   => null,        // Доступные промокоды.
-            'extraServices'         => null,        // Дополнительные услуги.
-            'eula'                  => null         // Дополнительные пользовательские соглашения.
+            // Закоментированы, тк просто null или пустую строку отдавать нельзя.
+            // 'bonuses'               => null,        // Массив бонусов для списания.
+            // 'deliveryGroupsBonuses' => null,        // Бонусы разделенной корзины.
+            // 'giftCards'             => null,        // Подарочные карты.
+            // 'availablePromocodes'   => null,        // Доступные промокоды.
+            // 'extraServices'         => null,        // Дополнительные услуги.
+            // 'eula'                  => null         // Дополнительные пользовательские соглашения.
 
         ];
         return $arResult;
@@ -337,7 +338,6 @@ class Basket extends BaseController
         $discounts = $orderObject->getDiscount();
         $arDiscounts = $discounts->getApplyResult();
         foreach ($arDiscounts['ORDER'] as $arDiscount) {
-            \Bitrix\Main\Diag\Debug::dumpToFile($arDiscount, $varName = 'Дискоунты', $fileName = '/local/modules/cube.api/log/discounts.log');
             if ($arDiscount['COUPON_ID']) {
                 return $arDiscount['COUPON_ID'];
             }

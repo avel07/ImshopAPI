@@ -74,9 +74,9 @@ class BaseController extends \Bitrix\Main\Engine\Controller
      * Временное решение из за ошибок в ядре (current user может быть пусто)
      * TODO: Удалить, как обновим проект до PHP 8+ и обновим Битрикс!
      * 
-	 * @param Controller|string $controller
-	 * @param string     $actionName
-	 * @param array|null      $parameters
+	 * @param Controller|string $controller     Контроллер
+	 * @param string            $actionName     Название метода
+	 * @param array|null        $parameters     Доп параметры к методу контроллера
 	 *
 	 * @return HttpResponse|mixed
 	 * @throws SystemException

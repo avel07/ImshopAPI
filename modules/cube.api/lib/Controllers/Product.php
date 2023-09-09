@@ -77,6 +77,7 @@ class Product extends BaseController
                 'quantity'      => $storeProductObject->getAmount()
             ];
         }
+        ddebug($arResult);
         return $arResult;
     }
 

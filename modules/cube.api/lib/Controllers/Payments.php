@@ -110,13 +110,17 @@ class Payments extends BaseController
      */
     private function listActionResponse(object $paymentSystems): ?array
     {
-        foreach ($paymentSystems as $paymentSystem) {
-            $arResult['payments'][] = [
+        foreach ($paymentSystems as $key => $paymentSystem) {
+            // Убираем МОККА из списка, МОККА получает ссылку из шаблона запроса, прямой ссылки платежка не дает!
+            if($paymentSystem->getId() === 12) continue;
+            $arPayment = [
                 'id'            => strval($paymentSystem->getId()),
                 'title'         => $paymentSystem->getName(),
-                'description'   => $paymentSystem->getDescription(),
                 'type'          => $paymentSystem->get('IS_CASH') ? 'cash' : 'card'
             ];
+            $arResult['payments'][] = (array) $arPayment;
+            // Выносим за основной массив, так как не может быть пустым. УБРАНО, ИЗ-ЗА СТРОГОЙ ТИПИЗАЦИИ json_encode
+            // !$paymentSystem->getDescription() ?: $arResult['payments'][$key]['description'] = $paymentSystem->getDescription();
         }
         return $arResult;
     }
@@ -131,7 +135,6 @@ class Payments extends BaseController
     public function createAction(): ?array
     {
         $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
-        \Bitrix\Main\Diag\Debug::dumpToFile($fields, $varName = 'Получили в создание оплаты', $fileName = '/local/modules/cube.api/log/take.log');
         // Инициализируем объект заказа
         $order = \Bitrix\Sale\Order::load($fields['orderId']);
         // Коллекция оплат.
@@ -139,6 +142,7 @@ class Payments extends BaseController
         // Получаем текущуюу оплату заказа.
         $paymentObject = $paymentCollection->current();
         // Проверим сразу, чтобы не было второго запроса, оплачен ли заказ.
+
         if($paymentObject->getField('PAID') === 'Y'){
             $this->addError(new \Bitrix\Main\Error('Ошибка формирования ссылки на оплату. Оплата имеет статус оплачено.', 400));
             return null;
@@ -148,12 +152,12 @@ class Payments extends BaseController
         // Инициализируем оплату для объекта оплаты.
         $initPayment = $payService->initiatePay($paymentObject, null, \Bitrix\Sale\PaySystem\BaseServiceHandler::STRING);
         // Проверяем ошибку оплаты. Если найдена, возвращаем сообщения ошибки.
+        ddebug($initPayment);
         if(!$initPayment->isSuccess()){
             $this->addError(new \Bitrix\Main\Error('При инициализации оплаты произошли ошибки: '.$initPayment->getBuyerErrorMessages(), 400));
             return null;
         }
         $arResult = $this->createActionResponse($paymentCollection, $initPayment);
-        \Bitrix\Main\Diag\Debug::dumpToFile($arResult, $varName = 'Отдали в создании оплаты', $fileName = '/local/modules/cube.api/log/take.log');
         return $arResult;
     }
 

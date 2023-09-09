@@ -24,6 +24,11 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
         <button class="ui-btn ui-btn-lg" data-action="productCheck">Проверить товары на складах</button>
         <button class="ui-btn ui-btn-lg" data-action="basketCalculate">Расчет корзины</button>
         <button class="ui-btn ui-btn-lg" data-action="userOrders">Список заказов пользователя</button>
+        <button class="ui-btn ui-btn-lg" data-action="userOtpSend">Вебхук отправки OTP кода</button>
+        <button class="ui-btn ui-btn-lg" data-action="userOtpCheck">Вебхук проверки OTP кода</button>
+        <button class="ui-btn ui-btn-lg" data-action="userGet">Получить данные юзера</button>
+        <button class="ui-btn ui-btn-lg" data-action="userEdit">Поменять данные юзера</button>
+        <button class="ui-btn ui-btn-lg" data-action="userRemove">Удалить юзера</button>
     </div>
     <div class="ui-alert" style="display: none;"></div>
     <script>
@@ -46,6 +51,7 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
         }
         return pairs.join('&');
     };
+
     const orderData = {
         "device": {
             "platform": "ios"
@@ -269,11 +275,12 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
           let result = await response.json();
           console.log(result);
     });
+
     const createPayment = {
         "command": "create",
         "paymentMethodId": "sberbank/card",
         "orderUuid": "cbc85e53-8067-4f13-a708-11d9aea71bf3",
-        "orderId": "6949",
+        "orderId": "6963",
         "returnUrl": "imshop://payment/failed"
     }
     let createPaymentButton = document.querySelector('[data-action="createPayment"]');
@@ -323,6 +330,7 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
           let result = await response.json();
           console.log(result);
     });
+
     const basketCalculate = {
         "city": "Пятигорск",
         "cityKladr": "7700000000000",
@@ -388,8 +396,9 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
           let result = await response.json();
           console.log(result);
     });
+
     const userOrders = {
-        "userIdentifier": "12345"
+        "userIdentifier": "3"
     }
     let userOrdersButton = document.querySelector('[data-action="userOrders"]');
     userOrdersButton.addEventListener('click', async (e) => {
@@ -403,6 +412,98 @@ $APPLICATION->SetTitle('IMSHOP API тесты');
           let result = await response.json();
           console.log(result);
     })
+
+    const userData = {
+        'userIdentifier': "357805"
+    }
+    let userGetButton = document.querySelector('[data-action="userGet"]')
+    userGetButton.addEventListener('click', async (e) => {
+        let response = await fetch('/api/user/get', {
+            method: 'POST',
+            headers: {
+                'Content-Type':'application/json'
+            },
+            body: JSON.stringify(userData)
+          });
+          let result = await response.json();
+          console.log(result);
+    })
+
+    const userEdit = {
+        "userIdentifier": "123",
+        "name": "Вася Пупкин",
+        "phone": "70987654321",
+        "email": "vasya@yahoo.com",
+        "birthday": "1986-12-24"
+    }
+
+    let userEditButton = document.querySelector('[data-action="userEdit"]')
+    userEditButton.addEventListener('click', async (e) => {
+        let response = await fetch('/api/user/edit', {
+            method: 'POST',
+            headers: {
+                'Content-Type':'application/json'
+            },
+            body: JSON.stringify(userEdit)
+          });
+          let result = await response.json();
+          console.log(result);
+    })
+
+    const userRemove = {
+        "identityId": "123",
+        "identityProviderName": "webhook_otp",
+        "email": "asd@asd.asd",
+        "phone": "+79991112233"
+    }
+
+    let userRemoveButton = document.querySelector('[data-action="userRemove"]')
+    userRemoveButton.addEventListener('click', async (e) => {
+        let response = await fetch('/api/user/remove', {
+            method: 'POST',
+            headers: {
+                'Content-Type':'application/json'
+            },
+            body: JSON.stringify(userRemove)
+          });
+          let result = await response.json();
+          console.log(result);
+    })
+
+    userOtpSend = {
+        'userIdentifier': '+79969805251',
+        'email'         : 'asd@mail.ru'
+    }
+    let userOtpSendButton = document.querySelector('[data-action="userOtpSend"]')
+    userOtpSendButton.addEventListener('click', async (e) => {
+        let response = await fetch('/api/user/otp/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type':'application/json'
+            },
+            body: JSON.stringify(userOtpSend)
+          });
+          let result = await response.json();
+          console.log(result);
+    })
+
+    userOtpCheck = {
+        'userIdentifier': '79969805251',
+        "otp": "877397"
+    }
+    let userOtpCheckButton = document.querySelector('[data-action="userOtpCheck"]')
+    userOtpCheckButton.addEventListener('click', async (e) => {
+        let response = await fetch('/api/user/otp/check', {
+            method: 'POST',
+            headers: {
+                'Content-Type':'application/json'
+            },
+            body: JSON.stringify(userOtpCheck)
+          });
+          let result = await response.json();
+          console.log(result);
+    })
+
 })
     </script>
 <?php

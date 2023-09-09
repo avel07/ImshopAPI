@@ -94,7 +94,8 @@ class User extends BaseController
 
     /**
      * @param $basketCollection     ORM коллекция заказов
-     * @param array $basketArray    Массив корзин, привязанных к заказу. Тут уже есть все товары со свойствами.
+     * @param $propertyCollection   ORM коллекция свойств заказов
+     * @param array $basketArray    Массив корзин, привязанных к заказу. Тут уже должны быть все товары со свойствами.
      * 
      * @return array
      */
@@ -112,6 +113,7 @@ class User extends BaseController
             if (!$basketOrderArray[$orderID]) {
                 $basketOrderArray[$orderID] = [];
             }
+            $basketOrderArray[$orderID]['BASE_BASKET_PRICE'] += $item['BASE_PRICE'] * $item['QUANTITY'];
             $basketOrderArray[$orderID][] = $item;
         }
 
@@ -130,7 +132,7 @@ class User extends BaseController
                 'statusMessage'         => null,    // Подробное описание статуса заказа
                 'price'                 => $orderObject->getPrice(),
                 'deliveryPrice'         => $orderObject->getPriceDelivery(),
-                'itemsPrice'            => $orderObject->getPrice() - $orderObject->getDiscountValue(),
+                'itemsPrice'            => $basketOrder['BASE_BASKET_PRICE'],
                 'createdOn'             => $orderObject->getDateInsert()->getTimestamp(),
                 'receiptUrl'            => null,    // Ссылка на PDF чек. (у нас этого нет. Это есть только в платежке)
                 'updatedOn'             => $orderObject->getDateUpdate()->getTimestamp(),
@@ -165,7 +167,7 @@ class User extends BaseController
                 $orderData['items'][] = [
                     'privateId'             => $basketOrderItem['PRODUCT_ID'],
                     'configurationId'       => null,  // Идентификатор товарного предложения. По идее не нужен. 
-                    'name'                  => $basketOrderItem['NAME'],
+                    'name'                  => $basketOrderItem['IBLOCK_FIELDS']['NAME'],
                     'image'                 => $basketOrderItem['IBLOCK_FIELDS']['PREVIEW_PICTURE'],
                     'price'                 => $basketOrderItem['BASE_PRICE'],
                     'quantity'              => $basketOrderItem['QUANTITY'],
@@ -178,6 +180,280 @@ class User extends BaseController
         }
         return $arResult;
     }
+
+    /**
+     * Action
+     * OTP отправка кода
+     * 
+     */
+    public function otpSendAction()
+    {
+        $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
+        $userPhone = $this->normalizePhone($fields['userIdentifier']);
+
+        $arResult = $this->otpSendActionResponse($userPhone, $fields['email']);
+        
+        return $arResult;
+    }
+
+    /**
+     * 
+     * @param string $userPhone   Номер телефона пользователя
+     * @param string $userEmail   Email пользователя
+     * @return 
+     */
+    private function otpSendActionResponse(string $userPhone, $userEmail)
+    {
+        if($userEmail){
+            $password = \Bitrix\Main\Security\Random::getString(6, true);
+            $USER = new \CUser;
+
+            // Генерируем шестизначный код сразу, чтобы записать это в поле юзера.
+            $code = \Bitrix\Main\Security\Random::getInt(100000, 999999);
+            // Поля Юзера.
+            $arUserFields = [
+                "LOGIN"             => $userPhone,
+                "PASSWORD"          => $password,
+                "CONFIRM_PASSWORD"  => $password,
+                "EMAIL"             => $userEmail,
+                "ACTIVE"            => "Y",
+                "PHONE_NUMBER"      => $userPhone,
+                "UF_OTP"            => $code,
+            ];
+            $newUserID = $USER->add($arUserFields);
+            if ($newUserID) {
+
+            // Отправляем SMS.
+            $sendMessage = Sms::sendMessage($userPhone, 'Ваш код:' . $code);
+
+            // Проверяем отправлено ли SMS.
+            if($sendMessage !== true){
+                $this->addError(new \Bitrix\Main\Error('Ошибка отправки SMS - ' . $sendMessage, 400));
+                return null;
+            }
+            // Отдаем результат
+            $arResult = [
+                'otp' => [
+                    'timeout'       => 30,  // Таймаут для повторного запроса)
+                    'message'       => 'На номер - '. $userPhone .' отправлено сообщение с кодом',
+                    'codeLength'    => strlen($code),
+                    'replyText'     => 'Прислать код повторно',
+                ]
+            ];
+            } else {
+                return $USER->LAST_ERROR;
+            }
+        } elseif($userId = $this->getUserByPhone($userPhone)) {
+            // Если юзер найден в таблице телефонов
+            
+            // Генерируем шестизначный код
+            $code = \Bitrix\Main\Security\Random::getInt(100000, 999999);
+
+            // Отправляем SMS.
+            $sendMessage = Sms::sendMessage($userPhone, 'Ваш код:' . $code);
+
+            // Проверяем отправлено ли SMS.
+            if($sendMessage !== true){
+                $this->addError(new \Bitrix\Main\Error('Ошибка отправки SMS - ' . $sendMessage, 400));
+                return null;
+            }
+
+            // Обновляем поля OTP у юзера 
+            $updateOtp = $this->updateUserOtp((int) $userId, $code);
+
+            // Проверяем обновлено ли поле OTP у юзера
+            if($updateOtp !== true){
+                $this->addError(new \Bitrix\Main\Error('Ошибка обновления OTP кода у пользователя - ' . $updateOtp, 400));
+                return null;
+            }
+
+            // Отдаем результат
+            $arResult = [
+                'otp' => [
+                    'timeout'       => 30,  // Таймаут для повторного запроса)
+                    'message'       => 'На номер - '. $userPhone .' отправлено сообщение с кодом',
+                    'codeLength'    => strlen($code),
+                    'replyText'     => 'Прислать код повторно',
+                ]
+            ];
+        } else {
+            // Если юзер не найден, то отправляем обязательные поля для регистрации.
+            $arResult = ['email'];
+        }
+        return $arResult;
+    }
+
+    /**
+     * Action
+     * Данные пользователя
+     * 
+     */
+    public function getAction()
+    {
+        $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
+
+        $userData = $this->getUserDataById($fields['userIdentifier']);
+        if(!$userData){
+            $this->addError(new \Bitrix\Main\Error('Пользователя '.$fields['userIdentifier'].' не существует', 400));
+            $error['error']['message'] = 'Пользователя '.$fields['userIdentifier'].' не существует';
+            return $error;
+        }
+        $arResult = $this->getActionResponse($userData);
+        return $arResult;
+    }
+
+    /**
+     * 
+     * @param object $userData 
+     * @return array
+     */
+    private function getActionResponse(object $userData): ?array
+    {
+        $arResult = [
+            // Обязательные поля
+            'user' => [
+                'id'                => $userData->getId(),
+                'phone'             => $userData->getLogin(),
+                'emailConfirmed'    => true,
+            ]
+        ];
+
+        // Номер ДК
+        !$userData->get('UF_DK_NUM') ?: $arResult['user']['cardNumber'] = $userData->get('UF_DK_NUM');
+        // Процент скидки по ДК
+        !$userData->get('UF_DK_NUM') ?: $arResult['user']['cardPercent'] = DiscountCard::getUserDkPercentDiscount($userData->getId());
+        // Текст каких баллов
+        !$userData->get('UF_DK_NUM') ?: $arResult['user']['units'] = 'Баллов по Дисконтной карте';
+        // Текст ДК
+        !$userData->get('UF_DK_NUM') ?: $arResult['user']['status'] = 'Дисконтная карта';
+        // Количество баллов по ДК
+        !$userData->get('UF_DK_SUM') ?: $arResult['user']['bonuses'] = (int) $userData->get('UF_DK_SUM');
+        // Email
+        !$userData->getEmail() ?: $arResult['user']['email'] = $userData->getEmail();
+        // ФИО
+        $userData->getLastName() || $userData->getName() || $userData->getSecondName() ? $arResult['user']['name'] = $userData->getLastName().' '.$userData->getName().' '.$userData->getSecondName() : null;
+        // Возраст
+        !$userData->getPersonalBirthday() ?: $arResult['user']['age'] = intval((new \Bitrix\Main\Type\DateTime())->getDiff($userData->getPersonalBirthday(), true)->format('%y'));
+        // Гендер
+        !$userData->getPersonalGender() ?: $userData->getPersonalGender() === 'F' ? $arResult['user']['gender'] = 'female' : $arResult['user']['gender'] = 'male';
+        // День рождения
+        !$userData->getPersonalBirthday() ?: $arResult['user']['birthday'] = $userData->getPersonalBirthday()->format('Y-m-d');
+
+        return $arResult;
+    }
+    
+    /**
+     * Action
+     * 
+     */
+    public function otpCheckAction()
+    {
+        $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
+        $userId = $this->getUserByPhone($this->normalizePhone($fields['userIdentifier']));
+        if(!$userId){
+            $this->addError(new \Bitrix\Main\Error('Пользователя '.$fields['userIdentifier'].' не существует', 400));
+            $error['error']['message'] = 'Пользователя '.$fields['userIdentifier'].' не существует';
+            return $error;
+        }
+        $userData = $this->getUserDataById((string) $userId);
+        if($userData->get('UF_OTP') !== (int) $fields['otp']){
+            $this->addError(new \Bitrix\Main\Error('Код - '.$fields['otp'].' неверный. Введите правильный код.', 400));
+            $error['error']['message'] = 'Код - '.$fields['otp'].' неверный. Введите правильный код.';
+            return $error;
+        }
+        $arResult = $this->getActionResponse($userData);
+
+        return $arResult;
+    }
+    /**
+     * Action
+     * Изменить данные пользователя
+     */
+    public function editAction()
+    {
+        $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
+        $userObject = $this->getUserDataById($fields['userIdentifier']);
+        if(!$userObject){
+            $this->addError(new \Bitrix\Main\Error('Пользователя '.$fields['userIdentifier'].' не существует', 400));
+            $error['error']['message'] = 'Пользователя '.$fields['userIdentifier'].' не существует';
+            return $error;
+        }
+        $arResult = $this->editActionResponse($userObject, $fields);
+        
+        if(!is_array($arResult)){
+            $this->addError(new \Bitrix\Main\Error('Ошибка обновления данных пользователя - '.$arResult, 400));
+            $error['error']['message'] = 'Ошибка обновления данных пользователя - '.$arResult;
+            return $error;
+        }
+        return $arResult;
+        
+    }
+
+    /**
+     * 
+     * @param object    $userObject Объект пользователя
+     * @param array     $fields     Поля пользователя 
+     * 
+     * @return mixed
+     */
+    private function editActionResponse(object $userObject, array $fields = [])
+    {
+        $user = new \CUser;
+        $birthDay = new \Bitrix\Main\Type\DateTime($fields['birthday'], 'Y-m-d');
+        $userFields = Array(
+          "NAME"                => $fields['name'],
+          "EMAIL"               => $fields['email'],
+          "PERSONAL_BIRTHDAY"   => $birthDay->toString()
+          );
+        if ($user->Update($userObject->getId(), $userFields)) {
+            $arResult = [
+                'id'            => $userObject->getId(),
+                'name'          => $fields['name'],
+                'phone'         => $userObject->getLogin(),
+                'email'         => $fields['email'],
+                'bonuses'       => $userObject->get('UF_DK_SUM') ? (int) $userObject->get('UF_DK_SUM') : null,
+                "segments"      => ["registered", "loyal"],
+                'age'           => $userObject->getPersonalBirthday() ? intval((new \Bitrix\Main\Type\DateTime())->getDiff($userObject->getPersonalBirthday(), true)->format('%y')) : null,
+                'gender'        => $userObject->getPersonalGender() === 'F' ? 'female' : 'male',
+                'cardNumber'    => $userObject->get('UF_DK_NUM')
+            ];
+            return $arResult;
+        } else {
+            return $user->LAST_ERROR;
+        }
+    }
+
+    /**
+     * Action
+     * Удалить пользователя.
+     */
+    public function removeAction()
+    {
+        $fields = \Bitrix\Main\Web\Json::decode($this->fields, JSON_UNESCAPED_UNICODE);
+        $userObject = $this->getUserDataById($fields['identityId']);
+        if(!$userObject){
+            $this->addError(new \Bitrix\Main\Error('Пользователя '.$fields['userIdentifier'].' не существует', 400));
+            $error['error']['message'] = 'Пользователя '.$fields['userIdentifier'].' не существует';
+            return $error;
+        }
+        $arResult = $this->removeActionResponse($userObject);
+        return $arResult;
+    }
+
+    /**
+     * @param   object    $userObject Объект пользователя
+     * @return  
+     */
+    private function removeActionResponse(object $userObject)
+    {   
+        $arResult['success'] = false;
+        if (\CUser::Delete($userObject->getId())){
+            $arResult['success'] = true;
+        }
+        return $arResult;
+    }
+
+
     /**
      * Получить ID юзера.
      *
@@ -225,7 +501,7 @@ class User extends BaseController
      * @param string $email
      * @return int|string
      */
-    public static function createUser($phone, $email)
+    public static function createUser(string $phone, string $email)
     {
         $password = \Bitrix\Main\Security\Random::getString(6, true);
         $USER = new \CUser;
@@ -270,6 +546,24 @@ class User extends BaseController
         }
     }
 
+    /**
+     * Обновляем OTP код у пользователя
+     * 
+     * @param int $code     OTP код
+     * @return bool|string
+     */
+    private static function updateUserOtp(int $userId, int $code)
+    {
+        $USER = new \CUser;
+        $arUserFields = [
+            "UF_OTP"    => $code,
+        ];
+        if ($USER->Update($userId, $arUserFields)) {
+            return true;
+        } else {
+            return $USER->LAST_ERROR;
+        }
+    }
 
     /**
      * Проверяет на существование юзера по ID, отдает ID, если найден.
@@ -338,5 +632,21 @@ class User extends BaseController
     {
         $anonimusUserId = \CSaleUser::GetAnonymousUserID();
         return $anonimusUserId;
+    }
+    /**
+     * Получить данные пользователя по ID
+     * 
+     * @param string $userId    ID пользователя
+     * 
+     * @return object 
+     */
+    public static function getUserDataById(string $userId = ''): ?object
+    {
+        $userObject = \Bitrix\Main\UserTable::query()
+            ->addFilter('ID', $userId)
+            ->addSelect('*')
+            ->addSelect('UF_*')
+            ->fetchObject();
+        return $userObject;
     }
 }
